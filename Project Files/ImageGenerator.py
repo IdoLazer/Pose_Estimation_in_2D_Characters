@@ -259,9 +259,9 @@ def create_body_hierarchy(parameters):
 
 
 def load_data(batch_size=4):
-    samples_num = 22000
+    samples_num = 10000
     num_layers = len(CHARACTER_DICT)
-    labels = np.random.randint(-25, 25, size=samples_num * num_layers).reshape((samples_num, num_layers))
+    labels = np.random.randint(-45, 45, size=samples_num * num_layers).reshape((samples_num, num_layers))
     data = []
     im_batch = []
     label_batch = []

@@ -64,8 +64,8 @@ CANONICAL_BIAS_DICT = {  # Here we assume a skeleton structure so layers are aff
                   0.35836794954530027, 0.9335804264972017, -0.2557931034708817 * (ImageGenerator.IMAGE_SIZE / 2)],
 }
 
-LAMBDA = 0.03
-ALPHA = 0.95
+LAMBDA = 0.001
+ALPHA = 0.05
 
 
 def get_gaussian_kernel(kernel_size=3, sigma=18, channels=3, padding=0):  # Set these to whatever you want
@@ -279,18 +279,14 @@ def imsave(img, title, path):
     plt.savefig(path + '\\' + title + '.png')
 
 
-grad_gaussian = kornia.filters.GaussianBlur2d((5, 5), (3, 3), 'replicate')
-
 def train(net_path=None):
     inspection_path, path = create_folders()
     colors = ['blue', 'red', 'orange', 'green', 'pink', 'purple', 'yellow', 'black', 'brown']
-    kernel_sizes = [51, 35, 25, 17, 13, 9, 7, 5, 3]
-    num_iter_to_print = 300
-    num_iterations = 15 * len(trainset)
+    kernel_sizes = [35, 25, 17, 13, 9, 7, 5, 3]
     net = create_net(net_path)
     criterion = nn.MSELoss()
     canonical = create_canonical()
-    optimizer = optim.Adam(net.parameters(), lr=0.00003)
+    optimizer = optim.Adam(net.parameters(), lr=0.00001)
 
     # num_patches = 1
     # patch_size = ImageGenerator.IMAGE_SIZE // num_patches #len(kernel_sizes)
@@ -300,10 +296,14 @@ def train(net_path=None):
 
     for epoch in range(len(kernel_sizes)):  # loop over the dataset multiple times
         gaussian = kornia.filters.GaussianBlur2d((kernel_sizes[epoch], kernel_sizes[epoch]), (18, 18), 'replicate')
+        grad_gaussian = kornia.filters.GaussianBlur2d((15, 15), (6, 6), 'replicate') if epoch < len(kernel_sizes) // 2 \
+            else kornia.filters.GaussianBlur2d((7, 7), (3, 3), 'replicate')
         running_losses = [0.0, 0.0, 0.0, 0.0]
         losses_arrays = [[], [], [], []]
         iterations = []
-        cur_epoch_num_iterations = num_iterations  # * (epoch + 1)
+        num_iter_to_print = int(70 * (0.2 * epoch + 1))
+        num_iterations = 7 * len(trainset)
+        cur_epoch_num_iterations = int(num_iterations * (0.2 * epoch + 1))
 
         # gaussian = get_gaussian_kernel(channels=3, kernel_size=kernel_sizes[epoch],
         #                                padding=((kernel_sizes[epoch] - 1) // 2)).to(device)
@@ -327,7 +327,8 @@ def train(net_path=None):
             outputs = outputs[:, :3, :, :]
 
             # calc loss
-            losses = calc_losses(close_to_eye_matrices, criterion, epoch, gaussian, inputs, inputs_alpha, kernel_sizes,
+            alpha_modified = ALPHA + (i / cur_epoch_num_iterations) * (i / cur_epoch_num_iterations) * (i / cur_epoch_num_iterations) * (0.01 - ALPHA)
+            losses = calc_losses(alpha_modified, close_to_eye_matrices, criterion, epoch, gaussian, grad_gaussian, inputs, inputs_alpha, kernel_sizes,
                                  outputs, outputs_alpha, translation_values)
             losses[0].backward()
             optimizer.step()
@@ -340,13 +341,13 @@ def train(net_path=None):
             if i == 0 or i == cur_epoch_num_iterations - 1:
                 with torch.no_grad():
                     save_batch(epoch, i, inputs, outputs, path)
-                    save_inspection_image(canonical, epoch, i, inspection_path, net, kernel_sizes, gaussian)
+                    save_inspection_image(canonical, epoch, i, inspection_path, net, kernel_sizes, gaussian, grad_gaussian)
             if i % num_iter_to_print == (
                     num_iter_to_print) - 1:
-                append_losses(epoch, i, iterations, losses_arrays, num_iter_to_print, running_losses)
+                append_losses(alpha_modified, epoch, i, iterations, losses_arrays, num_iter_to_print, running_losses)
                 running_losses = [0.0, 0.0, 0.0, 0.0]
                 with torch.no_grad():
-                    save_inspection_image(canonical, epoch, i, inspection_path, net, kernel_sizes, gaussian)
+                    save_inspection_image(canonical, epoch, i, inspection_path, net, kernel_sizes, gaussian, grad_gaussian)
 
         save_losses_graphs(colors, epoch, iterations, kernel_sizes, losses_arrays, path)
 
@@ -406,7 +407,7 @@ def save_losses_graphs(colors, epoch, iterations, kernel_sizes, losses, path):
     plt.close(fig)
 
 
-def save_inspection_image(canonical, epoch, i, inspection_path, net, kernel_sizes, gaussian):
+def save_inspection_image(canonical, epoch, i, inspection_path, net, kernel_sizes, gaussian, grad_gaussian):
     # parse inputs and outputs
     inspection_input = trainset[0][0].to(device)
     inspection_output = net(torch.cat([inspection_input, canonical], dim=1))[0]
@@ -419,12 +420,12 @@ def save_inspection_image(canonical, epoch, i, inspection_path, net, kernel_size
     inspection_gaussian_loss_image = calc_gaussian_loss(torch.nn.MSELoss(reduction='none'), epoch, gaussian,
                                                         inspection_input, inspection_input_alpha, kernel_sizes,
                                                         inspection_output, inspection_output_alpha)
-    inspection_gaussian_loss_image = normalize_image(inspection_gaussian_loss_image, -1, 1)
+    inspection_gaussian_loss_image = normalize_image(inspection_gaussian_loss_image, -1, torch.min(torch.tensor([torch.max(inspection_gaussian_loss_image), 1])))
 
     # calc depth loss image
-    inspection_depth_loss_image = calc_depth_loss(torch.nn.MSELoss(reduction='none'), inspection_input, inspection_output)
+    inspection_depth_loss_image = calc_depth_loss(grad_gaussian, torch.nn.MSELoss(reduction='none'), inspection_input, inspection_output)
     inspection_depth_loss_image = kornia.color.grayscale_to_rgb(inspection_depth_loss_image)
-    inspection_depth_loss_image = normalize_image(inspection_depth_loss_image, -1, 1)
+    inspection_depth_loss_image = normalize_image(inspection_depth_loss_image, -1, torch.min(torch.tensor([torch.max(inspection_depth_loss_image), 1])))
 
     # concat and save all images
     inspection = torch.cat((inspection_input[0].permute(1, 2, 0).cpu(), inspection_output[0].permute(1, 2, 0).cpu()))
@@ -438,18 +439,19 @@ def normalize_image(image, a, b):
     return image
 
 
-def append_losses(epoch, i, iterations, losses, num_iter_to_print, running_losses):
+def append_losses(alpha_modified, epoch, i, iterations, losses, num_iter_to_print, running_losses):
     losses[0].append(running_losses[0] / num_iter_to_print)
-    losses[1].append(((1 - LAMBDA) * (1 - ALPHA)) * running_losses[1] / num_iter_to_print)
-    losses[2].append(((1 - LAMBDA) * ALPHA) * running_losses[2] / num_iter_to_print)
+    losses[1].append(((1 - LAMBDA) * (1 - alpha_modified)) * running_losses[1] / num_iter_to_print)
+    losses[2].append(((1 - LAMBDA) * alpha_modified) * running_losses[2] / num_iter_to_print)
     losses[3].append(LAMBDA * running_losses[3] / num_iter_to_print)
     iterations.append(i + 1)
     print(
-        '[%d, %5d] loss: %.9f, gaussian loss: %.9f, depth loss: %.9f, orthogonal loss: %.9f' %
+        '[%d, %5d] loss: %.9f, gaussian loss: %.9f, depth loss: %.9f, orthogonal loss: %.9f, alpha modified: %.9f' %
         (epoch + 1, i + 1, running_losses[0] / num_iter_to_print,
-         ((1 - LAMBDA) * (1 - ALPHA)) * running_losses[1] / num_iter_to_print,
-         ((1 - LAMBDA) * ALPHA) * running_losses[2] / num_iter_to_print,
-         LAMBDA * running_losses[3] / num_iter_to_print))
+         ((1 - LAMBDA) * (1 - alpha_modified)) * running_losses[1] / num_iter_to_print,
+         ((1 - LAMBDA) * alpha_modified) * running_losses[2] / num_iter_to_print,
+         LAMBDA * running_losses[3] / num_iter_to_print,
+         alpha_modified))
 
 
 def save_batch(epoch, i, inputs, outputs, path):
@@ -459,14 +461,14 @@ def save_batch(epoch, i, inputs, outputs, path):
            "input (up) vs output (down)- epoch %d iteration %d" % (epoch + 1, i,), path)
 
 
-def calc_losses(close_to_eye_matrices, criterion, epoch, gaussian, inputs, inputs_alpha, kernel_sizes, outputs,
-                outputs_alpha, translation_values):
+def calc_losses(alpha_modified, close_to_eye_matrices, criterion, epoch, gaussian, grad_gaussian, inputs, inputs_alpha,
+                kernel_sizes, outputs, outputs_alpha, translation_values):
     orthogonal_loss = calc_orthogonal_loss(close_to_eye_matrices, criterion)
     translation_loss = calc_translation_loss(translation_values)
-    depth_loss = calc_depth_loss(criterion, inputs, outputs)
+    depth_loss = calc_depth_loss(grad_gaussian, criterion, inputs, outputs)
     gaussian_loss = calc_gaussian_loss(criterion, epoch, gaussian, inputs, inputs_alpha, kernel_sizes, outputs,
                                        outputs_alpha)
-    loss = (1 - LAMBDA) * (ALPHA * depth_loss + (1 - ALPHA) * gaussian_loss) + \
+    loss = (1 - LAMBDA) * (alpha_modified * depth_loss + (1 - alpha_modified) * gaussian_loss) + \
            LAMBDA * (translation_loss + orthogonal_loss)
 
     # rand_end_x, rand_end_y, rand_start_x, rand_start_y = generate_patch_indices(epoch, kernel_sizes,
@@ -487,25 +489,25 @@ def calc_losses(close_to_eye_matrices, criterion, epoch, gaussian, inputs, input
 
 
 def calc_gaussian_loss(criterion, epoch, gaussian, inputs, inputs_alpha, kernel_sizes, outputs, outputs_alpha):
-    inputs_dichotomized = inputs + ((kernel_sizes[epoch] / 3) * inputs_alpha.unsqueeze(1))
-    outputs_dichotomized = outputs + ((kernel_sizes[epoch] / 3) * outputs_alpha.unsqueeze(1))
-    gaussian_inputs = gaussian(inputs_dichotomized)
-    gaussian_outputs = gaussian(outputs_dichotomized)
+    inputs_dichotomized = inputs + ((kernel_sizes[epoch] / 7) * inputs_alpha.unsqueeze(1))
+    outputs_dichotomized = outputs + ((kernel_sizes[epoch] / 7) * outputs_alpha.unsqueeze(1))
+    gaussian_inputs = normalize_image(gaussian(inputs_dichotomized), -1, 1)
+    gaussian_outputs = normalize_image(gaussian(outputs_dichotomized), -1, 1)
     # gaussian_inputs = gaussian_inputs / (gaussian_inputs.norm(dim=1).unsqueeze(1)).clamp(1e-12)
     # gaussian_outputs = gaussian_outputs / (gaussian_outputs.norm(dim=1).unsqueeze(1)).clamp(1e-12)
     gaussian_loss = criterion(gaussian_outputs, gaussian_inputs)
     return gaussian_loss
 
 
-def calc_depth_loss(criterion, inputs, outputs):
+def calc_depth_loss(grad_gaussian, criterion, inputs, outputs):
     # inputs_edges = kornia.filters.canny(inputs)[1]
     # outputs_edges = kornia.filters.canny(outputs)[1]
     # inputs_depth_map = heat.heat_method(inputs_edges, timestep=0.1, mass=.01, iters_diffusion=50,
     #                                     iters_poisson=25)
     # outputs_depth_map = heat.heat_method(outputs_edges, timestep=0.1, mass=.01, iters_diffusion=50,
     #                                      iters_poisson=25)
-    inputs_depth_map = grad_gaussian(kornia.filters.canny(inputs)[1])
-    outputs_depth_map = grad_gaussian(kornia.filters.canny(outputs)[1])
+    inputs_depth_map = normalize_image(grad_gaussian(kornia.filters.canny(inputs)[1]), -1, 1)
+    outputs_depth_map = normalize_image(grad_gaussian(kornia.filters.canny(outputs)[1]), -1, 1)
     depth_loss = criterion(inputs_depth_map, outputs_depth_map)
     return depth_loss
 
@@ -585,8 +587,8 @@ def test(net, path):
 
 
 def main():
-    # path = ImageGenerator.PATH + 'Plots\\' + '20-07-2021 08-50-58 (35 range with new heat method)'
-    net, path = train()
+    # path = ImageGenerator.PATH + 'Plots\\' + '11-08-2021 16-56-12 (Good 15 range)'
+    net, path = train(ImageGenerator.PATH + 'Plots\\' + '11-08-2021 16-56-12 (Good 15 range)')
     test(net, path)
 
 

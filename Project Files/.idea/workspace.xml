@@ -3,6 +3,8 @@
   <component name="ChangeListManager">
     <list default="true" id="db88c3ab-506a-4dee-aded-d6c5bd7edda0" name="Default" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ImageGenerator.py" beforeDir="false" afterPath="$PROJECT_DIR$/ImageGenerator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/TorchLearner.py" beforeDir="false" afterPath="$PROJECT_DIR$/TorchLearner.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -258,7 +260,7 @@
       <workItem from="1627201846530" duration="20838000" />
       <workItem from="1627371204186" duration="9676000" />
       <workItem from="1627807985322" duration="38112000" />
-      <workItem from="1628450095196" duration="11870000" />
+      <workItem from="1628450095196" duration="33406000" />
     </task>
     <servers />
   </component>
@@ -347,7 +349,7 @@
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/ImageGenerator_py$TorchLearner.coverage" NAME="TorchLearner Coverage Results" MODIFIED="1620249266960" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
-    <SUITE FILE_PATH="coverage/TorchLearner_py$TorchLearner.coverage" NAME="TorchLearner Coverage Results" MODIFIED="1628528331361" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/TorchLearner_py$TorchLearner.coverage" NAME="TorchLearner Coverage Results" MODIFIED="1628711698126" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/ImageGenerator_py$ImageGenerator.coverage" NAME="ImageGenerator Coverage Results" MODIFIED="1611238773756" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/LabProject$pytest_in_TorchLearner_py.coverage" NAME="pytest in TorchLearner.py Coverage Results" MODIFIED="1609598691619" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/TorchLearner_py$ImageGenerator.coverage" NAME="ImageGenerator Coverage Results" MODIFIED="1616344342507" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
