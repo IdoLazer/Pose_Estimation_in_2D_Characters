@@ -5,6 +5,11 @@ import torch
 from PIL import Image, ImageDraw, ImageOps
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from pathlib import Path
+
+source_path = Path(__file__).resolve()
+source_dir = source_path.parent
+PATH = str(source_dir) + '\\'
 
 
 class Vector2D:
@@ -41,8 +46,9 @@ class Vector2D:
     def __str__(self):
         return "({0},{1})".format(self.x, self.y)
 
+
 IMAGE_SIZE = 128
-CHARACTER_PATH = 'C:\\School\\Huji\\Lab\\LabProject\\Character Layers\\'
+CHARACTER_PATH = PATH + 'Character Layers\\'
 CHARACTER_DICT = {
     # 'Lower Torso': {'name': 'Lower Torso', 'path': CHARACTER_PATH + 'Character.png', 'displacement': Vector2D(0, 8),
     #                 'children': ['Chest', 'Left Shoulder', 'Upper Right Leg'], 'parent': 'None'},
@@ -82,6 +88,10 @@ PARENTS = [None, 0, 1, 0, 3, 0, 5, 5, 7, 5, 9]
 
 images = dict()
 
+# sample_params = [5, 14, -29, -16, 22, -10, -22, 14, -21, -26, -21]
+sample_params = [5, 14, -29, -16, 22, -10, -22, 14, -21, -26, -21]
+
+
 class BodyPart:
     def __init__(self, parent, name, path, shape, dist_from_parent, inner_rotation, color):
         self.parent = parent
@@ -104,6 +114,8 @@ class BodyPart:
             parent.__add_child(self)
             joint_rotation = parent.rotation
             center = parent.position
+        # create_affine_transform(math.radians(inner_rotation), Vector2D(), dist_from_parent,
+        #                         name, True)  # TODO: This is just to generate initial transformations
         self.position = rotate(center, center + dist_from_parent, -joint_rotation)
         self.center = center
         self.rotation = joint_rotation + math.radians(inner_rotation)
@@ -131,11 +143,12 @@ def translate_points(points, displacement):
     return [points[i] + displacement for i in range(len(points))]
 
 
-def create_affine_transform(angle, center, displacement, name):
-    dx, dy = displacement.x, -displacement.y  # displacement.x / (IMAGE_SIZE / 2), -displacement.y / (IMAGE_SIZE / 2)
+def create_affine_transform(angle, center, displacement, name, print_dict=False):
+    dx, dy = (displacement.x, -displacement.y) if print_dict else \
+        (displacement.x, -displacement.y)
     cos = math.cos(angle)
     sin = math.sin(angle)
-    x, y = center.x, center.y  # 0, 0
+    x, y = (0, 0) if print_dict else (center.x, center.y)
     nx, ny = x + dx, y + dy
     a = cos / 1
     b = sin / 1
@@ -143,21 +156,23 @@ def create_affine_transform(angle, center, displacement, name):
     d = -sin / 1
     e = cos / 1
     f = y - d * nx - e * ny
-    # bias = [a, b, c, d, e, f]
-    # print('\'' + name + '\' : ' + str(bias) + ',')
+    if print_dict:
+        bias = [a, b, c, d, e, f]
+        print('\'' + name + '\' : ' + str(bias) + ',')
     return np.array([
         [a, b, c],
         [d, e, f],
         [0, 0, 1]])
 
 
-def traverse_tree(cur, layers, draw_skeleton, skeleton_draw, transform=True):
+def traverse_tree(cur, layers, draw_skeleton, skeleton_draw, transform=True, print_dict=False):
     image_center = Vector2D(IMAGE_SIZE / 2, IMAGE_SIZE / 2)
     im = cur.im
     if transform:
         im = im.transform((IMAGE_SIZE, IMAGE_SIZE),
                           Image.AFFINE,
-                          data=create_affine_transform(cur.rotation, image_center, cur.position, cur.name).flatten()[:6],
+                          data=create_affine_transform(cur.rotation, image_center, cur.position, cur.name, print_dict).
+                          flatten()[:6],
                           resample=Image.BILINEAR)
     for child in cur.children:
         if draw_skeleton:
@@ -167,7 +182,7 @@ def traverse_tree(cur, layers, draw_skeleton, skeleton_draw, transform=True):
                 fill="red")
             skeleton_draw.line([(line[0].x, IMAGE_SIZE - line[0].y),
                                 (line[1].x, IMAGE_SIZE - line[1].y)], fill="yellow")
-        traverse_tree(child, layers, draw_skeleton, skeleton_draw, transform)
+        traverse_tree(child, layers, draw_skeleton, skeleton_draw, transform, print_dict)
     if not cur.children and draw_skeleton:
         if cur.name == 'Head':
             line = translate_points([cur.position, rotate(cur.position, cur.position + Vector2D(0, 15), -cur.rotation)],
@@ -180,11 +195,11 @@ def traverse_tree(cur, layers, draw_skeleton, skeleton_draw, transform=True):
     layers[cur.name] = im
 
 
-def generate_layers(origin, draw_skeleton=False, as_tensor=False, transform=True):
+def generate_layers(origin, draw_skeleton=False, as_tensor=False, transform=True, print_dict=False):
     layers = {}
     skeleton = Image.new('RGBA', (IMAGE_SIZE, IMAGE_SIZE))
     skeleton_draw = ImageDraw.Draw(skeleton)
-    traverse_tree(origin, layers, draw_skeleton, skeleton_draw, transform)
+    traverse_tree(origin, layers, draw_skeleton, skeleton_draw, transform, print_dict)
     if not as_tensor:
         layers['Skeleton'] = skeleton
         return layers
@@ -212,34 +227,41 @@ def generate_layers(origin, draw_skeleton=False, as_tensor=False, transform=True
 #     return im
 
 
-def create_image(origin, draw_skeleton=False):
+def create_image(origin, draw_skeleton=False, omit_layers=False, print_dict=False):
     drawing_order = DRAWING_ORDER + ['Skeleton']
-    layers = generate_layers(origin, draw_skeleton)
+    layers = generate_layers(origin, draw_skeleton, print_dict=print_dict)
     # new_layers = []
     im = Image.new("RGBA", (IMAGE_SIZE, IMAGE_SIZE))
     for part in drawing_order:
+        if omit_layers and part != 'Right Arm':
+            continue
         alpha = ImageOps.invert(layers[part].split()[-1])
         im = Image.composite(im, layers[part], alpha)
     # return np.array(new_layers).sum(axis=0).astype('uint8')
     # im = im.convert("RGB")
+    # im.show()
     return np.array(im).astype('uint8')
 
 
 def create_body_hierarchy(parameters):
+    # print("sample_params = " + str(parameters))
+    for i in range(len(parameters)):
+        parameters[i] += sample_params[i]
+    # parameters = sample_params  # TODO: Always comment out when starting
     cur = CHARACTER_DICT['Lower Torso']
     parts_dict = dict()
     parts_dict['None'] = None
     for i, part in enumerate(DRAWING_ORDER):
         cur = CHARACTER_DICT[part]
         parts_dict[part] = BodyPart(parts_dict[cur['parent']], cur['name'], cur['path'], None,
-                                                    cur['displacement'], parameters[i], None)
+                                    cur['displacement'], parameters[i], None)
     return parts_dict['Lower Torso']
 
 
 def load_data(batch_size=4):
-    samples_num = 30000
+    samples_num = 22000
     num_layers = len(CHARACTER_DICT)
-    labels = np.random.randint(-45, 45, size=samples_num * num_layers).reshape((samples_num, num_layers))
+    labels = np.random.randint(-25, 25, size=samples_num * num_layers).reshape((samples_num, num_layers))
     data = []
     im_batch = []
     label_batch = []
@@ -247,7 +269,7 @@ def load_data(batch_size=4):
     for index in tqdm(range(len(labels))):
         angles = labels[index]
         origin = create_body_hierarchy(angles)
-        im = create_image(origin)
+        im = create_image(origin, draw_skeleton=False, print_dict=False)#, omit_layers=(index // batch_size) % 2 == 1)
         im = (im - 127.5) / 127.5
         im_batch.append(im)
         label_batch.append(angles)
@@ -264,7 +286,7 @@ def load_data(batch_size=4):
 
 
 if __name__ == "__main__":
-    angles = np.random.randint(-40, 40, 11)
+    angles = np.random.randint(-10, 10, 11)
     origin = create_body_hierarchy(angles)
     im = create_image(origin, draw_skeleton=False)
     plt.imshow(im)
