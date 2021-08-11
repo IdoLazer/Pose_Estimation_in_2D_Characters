@@ -2,71 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="db88c3ab-506a-4dee-aded-d6c5bd7edda0" name="Default" comment="">
-      <change afterPath="$PROJECT_DIR$/HeatMethod.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ImageGenerator.py" beforeDir="false" afterPath="$PROJECT_DIR$/ImageGenerator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-17-01/Training Loss epoch 1.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-17-01/Training Loss epoch 2.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-17-01/Training Loss epoch 3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-17-01/Training Loss epoch 4.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-17-01/input (up) vs output (down)- epoch 1 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-17-01/input (up) vs output (down)- epoch 1 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-17-01/input (up) vs output (down)- epoch 2 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-17-01/input (up) vs output (down)- epoch 2 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-17-01/input (up) vs output (down)- epoch 3 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-17-01/input (up) vs output (down)- epoch 3 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-17-01/input (up) vs output (down)- epoch 4 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-17-01/input (up) vs output (down)- epoch 4 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/Training Loss epoch 1.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/Training Loss epoch 2.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/Training Loss epoch 3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/Training Loss epoch 4.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/Training Loss epoch 5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/Training Loss epoch 6.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/Training Loss epoch 7.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/aaa_net.pth" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/input (up) vs output (down)- epoch 1 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/input (up) vs output (down)- epoch 1 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/input (up) vs output (down)- epoch 2 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/input (up) vs output (down)- epoch 2 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/input (up) vs output (down)- epoch 3 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/input (up) vs output (down)- epoch 3 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/input (up) vs output (down)- epoch 4 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/input (up) vs output (down)- epoch 4 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/input (up) vs output (down)- epoch 5 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/input (up) vs output (down)- epoch 5 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/input (up) vs output (down)- epoch 6 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/input (up) vs output (down)- epoch 6 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/input (up) vs output (down)- epoch 7 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/input (up) vs output (down)- epoch 7 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/input.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 17-35-25/output.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/Training Loss epoch 1.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/Training Loss epoch 2.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/Training Loss epoch 3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/Training Loss epoch 4.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/Training Loss epoch 5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/Training Loss epoch 6.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/Training Loss epoch 7.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/aaa_net.pth" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/input (up) vs output (down)- epoch 1 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/input (up) vs output (down)- epoch 1 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/input (up) vs output (down)- epoch 2 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/input (up) vs output (down)- epoch 2 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/input (up) vs output (down)- epoch 3 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/input (up) vs output (down)- epoch 3 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/input (up) vs output (down)- epoch 4 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/input (up) vs output (down)- epoch 4 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/input (up) vs output (down)- epoch 5 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/input (up) vs output (down)- epoch 5 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/input (up) vs output (down)- epoch 6 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/input (up) vs output (down)- epoch 6 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/input (up) vs output (down)- epoch 7 beginning.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/input (up) vs output (down)- epoch 7 end.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/input.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Plots/26-05-2021 18-43-36/output.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/TorchLearner.py" beforeDir="false" afterPath="$PROJECT_DIR$/TorchLearner.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -322,7 +258,7 @@
       <workItem from="1627201846530" duration="20838000" />
       <workItem from="1627371204186" duration="9676000" />
       <workItem from="1627807985322" duration="38112000" />
-      <workItem from="1628450095196" duration="11264000" />
+      <workItem from="1628450095196" duration="11870000" />
     </task>
     <servers />
   </component>
