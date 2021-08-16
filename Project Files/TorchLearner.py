@@ -64,7 +64,7 @@ CANONICAL_BIAS_DICT = {  # Here we assume a skeleton structure so layers are aff
                   0.35836794954530027, 0.9335804264972017, -0.2557931034708817 * (ImageGenerator.IMAGE_SIZE / 2)],
 }
 
-LAMBDA = 0.001
+LAMBDA = 0.0006
 ALPHA = 0.05
 
 
@@ -282,7 +282,7 @@ def imsave(img, title, path):
 def train(net_path=None):
     inspection_path, path = create_folders()
     colors = ['blue', 'red', 'orange', 'green', 'pink', 'purple', 'yellow', 'black', 'brown']
-    kernel_sizes = [35, 25, 17, 13, 9, 7, 5, 3]
+    kernel_sizes = [51, 35, 25, 17, 13, 9, 7, 5, 3]
     net = create_net(net_path)
     criterion = nn.MSELoss()
     canonical = create_canonical()
@@ -296,8 +296,8 @@ def train(net_path=None):
 
     for epoch in range(len(kernel_sizes)):  # loop over the dataset multiple times
         gaussian = kornia.filters.GaussianBlur2d((kernel_sizes[epoch], kernel_sizes[epoch]), (18, 18), 'replicate')
-        grad_gaussian = kornia.filters.GaussianBlur2d((15, 15), (6, 6), 'replicate') if epoch < len(kernel_sizes) // 2 \
-            else kornia.filters.GaussianBlur2d((7, 7), (3, 3), 'replicate')
+        grad_gaussian = kornia.filters.GaussianBlur2d((11, 11), (6, 6), 'replicate') if epoch < len(kernel_sizes) // 2 \
+            else kornia.filters.GaussianBlur2d((5, 5), (3, 3), 'replicate')
         running_losses = [0.0, 0.0, 0.0, 0.0]
         losses_arrays = [[], [], [], []]
         iterations = []
