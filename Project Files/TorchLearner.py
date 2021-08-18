@@ -588,7 +588,7 @@ def test(net, path):
 
 def main():
     # path = ImageGenerator.PATH + 'Plots\\' + '11-08-2021 16-56-12 (Good 15 range)'
-    net, path = train(ImageGenerator.PATH + 'Plots\\' + '11-08-2021 16-56-12 (Good 15 range)')
+    net, path = train(ImageGenerator.PATH + 'Plots\\' + '16-08-2021 07-52-39 (Good 25 range)')
     test(net, path)
 
 
