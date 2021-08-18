@@ -1,0 +1,75 @@
+{
+    "drawing_order": [
+        "Root",
+        "Left Arm",
+        "Right Arm",
+        "Head"
+    ],
+    "hierarchy_dict": {
+        "Root": {
+            "children": [
+                "Head",
+                "Left Arm",
+                "Right Arm"
+            ],
+            "displacement": [
+                0,
+                -25
+            ],
+            "name": "Root",
+            "parent": "None",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Cartman\\Body.png"
+        },
+        "Head": {
+            "children": [],
+            "displacement": [
+                0,
+                30
+            ],
+            "name": "Head",
+            "parent": "Root",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Cartman\\Head.png"
+        },
+        "Left Arm": {
+            "children": [],
+            "displacement": [
+                -6,
+				0
+            ],
+            "name": "Left Arm",
+            "parent": "Root",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Cartman\\Left Hand.png"
+        },
+        "Right Arm": {
+            "children": [],
+            "displacement": [
+                6,
+				0
+            ],
+            "name": "Right Arm",
+            "parent": "Root",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Cartman\\Right Hand.png"
+        }
+    },
+    "image_size": 128,
+    "parents": [
+        null,
+        0,
+        0,
+        0
+    ],
+    "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Cartman\\",
+    "sample_params": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    ]
+}

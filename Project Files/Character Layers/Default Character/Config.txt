@@ -1,0 +1,175 @@
+{
+    "drawing_order": [
+        "Root",
+        "Upper Left Leg",
+        "Lower Left Leg",
+        "Upper Right Leg",
+        "Lower Right Leg",
+        "Chest",
+        "Head",
+        "Left Shoulder",
+        "Left Arm",
+        "Right Shoulder",
+        "Right Arm"
+    ],
+    "hierarchy_dict": {
+        "Chest": {
+            "children": [
+                "Head",
+                "Left Shoulder",
+                "Right Shoulder"
+            ],
+            "displacement": [
+                0,
+                7
+            ],
+            "name": "Chest",
+            "parent": "Root",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Default Character\\Chest.png"
+        },
+        "Head": {
+            "children": [],
+            "displacement": [
+                0,
+                20
+            ],
+            "name": "Head",
+            "parent": "Chest",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Default Character\\Head.png"
+        },
+        "Left Arm": {
+            "children": [],
+            "displacement": [
+                -6,
+                -15
+            ],
+            "name": "Left Arm",
+            "parent": "Left Shoulder",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Default Character\\Left Arm.png"
+        },
+        "Left Shoulder": {
+            "children": [
+                "Left Arm"
+            ],
+            "displacement": [
+                -10,
+                13
+            ],
+            "name": "Left Shoulder",
+            "parent": "Chest",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Default Character\\Left Shoulder.png"
+        },
+        "Lower Left Leg": {
+            "children": [
+                ""
+            ],
+            "displacement": [
+                0,
+                -28
+            ],
+            "name": "Lower Left Leg",
+            "parent": "Upper Left Leg",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Default Character\\Lower Left Leg.png"
+        },
+        "Lower Right Leg": {
+            "children": [
+                ""
+            ],
+            "displacement": [
+                1,
+                -26
+            ],
+            "name": "Lower Right Leg",
+            "parent": "Upper Right Leg",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Default Character\\Lower Right Leg.png"
+        },
+        "Right Arm": {
+            "children": [],
+            "displacement": [
+                4,
+                -16
+            ],
+            "name": "Right Arm",
+            "parent": "Right Shoulder",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Default Character\\Right Arm.png"
+        },
+        "Right Shoulder": {
+            "children": [
+                "Right Arm"
+            ],
+            "displacement": [
+                11,
+                13
+            ],
+            "name": "Right Shoulder",
+            "parent": "Chest",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Default Character\\Right Shoulder.png"
+        },
+        "Root": {
+            "children": [
+                "Chest",
+                "Left Shoulder",
+                "Upper Right Leg"
+            ],
+            "displacement": [
+                0,
+                8
+            ],
+            "name": "Root",
+            "parent": "None",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Default Character\\Lower Torso.png"
+        },
+        "Upper Left Leg": {
+            "children": [
+                "Lower Left Leg"
+            ],
+            "displacement": [
+                -5,
+                -8
+            ],
+            "name": "Upper Left Leg",
+            "parent": "Root",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Default Character\\Upper Left Leg.png"
+        },
+        "Upper Right Leg": {
+            "children": [
+                "Lower Right Leg"
+            ],
+            "displacement": [
+                5,
+                -8
+            ],
+            "name": "Upper Right Leg",
+            "parent": "Root",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Default Character\\Upper Right Leg.png"
+        }
+    },
+    "image_size": 128,
+    "parents": [
+        null,
+        0,
+        1,
+        0,
+        3,
+        0,
+        5,
+        5,
+        7,
+        5,
+        9
+    ],
+    "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Default Character\\",
+    "sample_params": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    ]
+}
