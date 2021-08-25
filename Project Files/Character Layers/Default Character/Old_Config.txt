@@ -25,10 +25,10 @@
     },
     "char_tree_array": [
         "Root",
+        "Head",
         "Chest",
         "Upper Left Leg",
         "Upper Right Leg",
-        "Head",
         "Left Shoulder",
         "Right Shoulder",
         "Lower Left Leg",
@@ -143,13 +143,13 @@
     "parents": [
         null,
         0,
+        2,
         0,
         0,
-        1,
-        1,
-        1,
+        2,
         2,
         3,
+        4,
         5,
         6
     ],

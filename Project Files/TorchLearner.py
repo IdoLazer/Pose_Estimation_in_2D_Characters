@@ -19,11 +19,10 @@ import ImageGenerator
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.get_device_name())
 batch_size = 4
-num_layers = 11
 grayscale = torchvision.transforms.Grayscale().to(device)
 grayscale.requires_grad_(False)
 
-trainset, testset = ImageGenerator.load_data(batch_size)
+trainset, testset, char = ImageGenerator.load_data('Aang', batch_size=4, samples_num=25)
 
 # CANONICAL_BIAS_DICT = {  # Here we assume no skeleton structure so layers are not affected by each other
 #     'Root' : [0.9961946980917455, 0.08715574274765817, 0.6972459419812653, -0.08715574274765817, 0.9961946980917455, 7.969557584733964],
@@ -38,31 +37,31 @@ trainset, testset = ImageGenerator.load_data(batch_size)
 # 'Right Shoulder' : [0.8571673007021123, -0.5150380749100542, -23.82036078287659, 0.5150380749100542, 0.8571673007021123, 19.382697353450855],
 # 'Right Arm' : [0.6156614753256583, -0.7880107536067219, -27.184794599472447, 0.7880107536067219, 0.6156614753256583, -6.811905611424363],
 # }
-CANONICAL_BIAS_DICT = {  # Here we assume a skeleton structure so layers are affected by each other
-    'Root': [0.9961946980917455, 0.08715574274765817, 0.01089446784345727 * (ImageGenerator.IMAGE_SIZE / 2),
-                    -0.08715574274765817, 0.9961946980917455, 0.1245243372614682 * (ImageGenerator.IMAGE_SIZE / 2)],
-    'Upper Left Leg': [0.9702957262759965, 0.24192189559966773, 0.04556411666535376 * (ImageGenerator.IMAGE_SIZE / 2),
-                       -0.24192189559966773, 0.9702957262759965, -0.1401871138782236 * (ImageGenerator.IMAGE_SIZE / 2)],
-    'Lower Left Leg': [0.8746197071393957, -0.48480962024633706, 0.21210420885777245 * (ImageGenerator.IMAGE_SIZE / 2),
-                       0.48480962024633706, 0.8746197071393957, -0.3826461218734856 * (ImageGenerator.IMAGE_SIZE / 2)],
-    'Upper Right Leg': [0.9612616959383189, -0.27563735581699916,
-                        -0.04064390051805627 * (ImageGenerator.IMAGE_SIZE / 2), 0.27563735581699916, 0.9612616959383189,
-                        -0.1416918804154929 * (ImageGenerator.IMAGE_SIZE / 2)],
-    'Lower Right Leg': [0.9271838545667874, 0.374606593415912, -0.1666711763028203 * (ImageGenerator.IMAGE_SIZE / 2),
-                        -0.374606593415912, 0.9271838545667874, -0.3708152128956338 * (ImageGenerator.IMAGE_SIZE / 2)],
-    'Chest': [0.984807753012208, -0.17364817766693033, -0.018992769432320505 * (ImageGenerator.IMAGE_SIZE / 2),
-              0.17364817766693033, 0.984807753012208, 0.10771334798571025 * (ImageGenerator.IMAGE_SIZE / 2)],
-    'Head': [0.9271838545667874, -0.374606593415912, -0.1170645604424725 * (ImageGenerator.IMAGE_SIZE / 2),
-             0.374606593415912, 0.9271838545667874, 0.28974495455212107 * (ImageGenerator.IMAGE_SIZE / 2)],
-    'Left Shoulder': [0.9702957262759965, 0.24192189559966773, 0.20074909227430696 * (ImageGenerator.IMAGE_SIZE / 2),
-                      -0.24192189559966773, 0.9702957262759965, 0.1592910232123637 * (ImageGenerator.IMAGE_SIZE / 2)],
-    'Left Arm': [0.9335804264972017, -0.35836794954530027, 0.1715156531587924 * (ImageGenerator.IMAGE_SIZE / 2),
-                 0.35836794954530027, 0.9335804264972017, -0.18521091719040977 * (ImageGenerator.IMAGE_SIZE / 2)],
-    'Right Shoulder': [0.898794046299167, -0.4383711467890774, -0.24352436589920068 * (ImageGenerator.IMAGE_SIZE / 2),
-                       0.4383711467890774, 0.898794046299167, 0.10722249980014562 * (ImageGenerator.IMAGE_SIZE / 2)],
-    'Right Arm': [0.9335804264972017, -0.35836794954530027, 0.031243210730249958 * (ImageGenerator.IMAGE_SIZE / 2),
-                  0.35836794954530027, 0.9335804264972017, -0.2557931034708817 * (ImageGenerator.IMAGE_SIZE / 2)],
-}
+# CANONICAL_BIAS_DICT = {  # Here we assume a skeleton structure so layers are affected by each other
+#     'Root': [0.9961946980917455, 0.08715574274765817, 0.01089446784345727 * (ImageGenerator.IMAGE_SIZE / 2),
+#                     -0.08715574274765817, 0.9961946980917455, 0.1245243372614682 * (ImageGenerator.IMAGE_SIZE / 2)],
+#     'Upper Left Leg': [0.9702957262759965, 0.24192189559966773, 0.04556411666535376 * (ImageGenerator.IMAGE_SIZE / 2),
+#                        -0.24192189559966773, 0.9702957262759965, -0.1401871138782236 * (ImageGenerator.IMAGE_SIZE / 2)],
+#     'Lower Left Leg': [0.8746197071393957, -0.48480962024633706, 0.21210420885777245 * (ImageGenerator.IMAGE_SIZE / 2),
+#                        0.48480962024633706, 0.8746197071393957, -0.3826461218734856 * (ImageGenerator.IMAGE_SIZE / 2)],
+#     'Upper Right Leg': [0.9612616959383189, -0.27563735581699916,
+#                         -0.04064390051805627 * (ImageGenerator.IMAGE_SIZE / 2), 0.27563735581699916, 0.9612616959383189,
+#                         -0.1416918804154929 * (ImageGenerator.IMAGE_SIZE / 2)],
+#     'Lower Right Leg': [0.9271838545667874, 0.374606593415912, -0.1666711763028203 * (ImageGenerator.IMAGE_SIZE / 2),
+#                         -0.374606593415912, 0.9271838545667874, -0.3708152128956338 * (ImageGenerator.IMAGE_SIZE / 2)],
+#     'Chest': [0.984807753012208, -0.17364817766693033, -0.018992769432320505 * (ImageGenerator.IMAGE_SIZE / 2),
+#               0.17364817766693033, 0.984807753012208, 0.10771334798571025 * (ImageGenerator.IMAGE_SIZE / 2)],
+#     'Head': [0.9271838545667874, -0.374606593415912, -0.1170645604424725 * (ImageGenerator.IMAGE_SIZE / 2),
+#              0.374606593415912, 0.9271838545667874, 0.28974495455212107 * (ImageGenerator.IMAGE_SIZE / 2)],
+#     'Left Shoulder': [0.9702957262759965, 0.24192189559966773, 0.20074909227430696 * (ImageGenerator.IMAGE_SIZE / 2),
+#                       -0.24192189559966773, 0.9702957262759965, 0.1592910232123637 * (ImageGenerator.IMAGE_SIZE / 2)],
+#     'Left Arm': [0.9335804264972017, -0.35836794954530027, 0.1715156531587924 * (ImageGenerator.IMAGE_SIZE / 2),
+#                  0.35836794954530027, 0.9335804264972017, -0.18521091719040977 * (ImageGenerator.IMAGE_SIZE / 2)],
+#     'Right Shoulder': [0.898794046299167, -0.4383711467890774, -0.24352436589920068 * (ImageGenerator.IMAGE_SIZE / 2),
+#                        0.4383711467890774, 0.898794046299167, 0.10722249980014562 * (ImageGenerator.IMAGE_SIZE / 2)],
+#     'Right Arm': [0.9335804264972017, -0.35836794954530027, 0.031243210730249958 * (ImageGenerator.IMAGE_SIZE / 2),
+#                   0.35836794954530027, 0.9335804264972017, -0.2557931034708817 * (ImageGenerator.IMAGE_SIZE / 2)],
+# }
 
 LAMBDA = 0.0006
 ALPHA = 0.05
@@ -129,17 +128,18 @@ def get_sobel():
 
 
 class Net(nn.Module):
-    def __init__(self):
+    def __init__(self, character):
         super(Net, self).__init__()
+        self.num_layers = len(character.char_tree_array)
         self.conv1 = nn.Conv2d(4, 8, 3)
         self.conv2 = nn.Conv2d(8, 16, 3)
         self.conv3 = nn.Conv2d(16, 32, 3)
         self.conv4 = nn.Conv2d(32, 64, 3)
-        self.fc1 = nn.Linear(64 * (((((((ImageGenerator.IMAGE_SIZE - 2) - 2) // 2) - 2) // 2) - 2) // 2) *
-                             (((((((ImageGenerator.IMAGE_SIZE - 2) - 2) // 2) - 2) // 2) - 2) // 2), 512)
-        self.fc2 = nn.Linear(512, 3 * num_layers)
-        self.fc3 = nn.Linear(3 * num_layers, 6 * num_layers)
-        self.fc4 = nn.Linear(6 * num_layers, 6 * num_layers)
+        self.fc1 = nn.Linear(64 * (((((((character.image_size - 2) - 2) // 2) - 2) // 2) - 2) // 2) *
+                             (((((((character.image_size - 2) - 2) // 2) - 2) // 2) - 2) // 2), 512)
+        self.fc2 = nn.Linear(512, 3 * self.num_layers)
+        self.fc3 = nn.Linear(3 * self.num_layers, 6 * self.num_layers)
+        self.fc4 = nn.Linear(6 * self.num_layers, 6 * self.num_layers)
         torch.nn.init.xavier_uniform_(self.conv1.weight, 0.3)
         torch.nn.init.xavier_uniform_(self.conv2.weight, 0.3)
         torch.nn.init.xavier_uniform_(self.conv3.weight, 0.3)
@@ -150,9 +150,10 @@ class Net(nn.Module):
         torch.nn.init.xavier_uniform_(self.fc4.weight, 0.3)
         with torch.no_grad():
             bias = []
-            for part in ImageGenerator.DRAWING_ORDER:
-                bias += CANONICAL_BIAS_DICT[part]
-            self.fc4.bias = torch.nn.Parameter(torch.DoubleTensor(bias).view(-1, 6 * num_layers))
+            for part in character.drawing_order:
+                bias += character.canonical_bias_dict[part]
+            self.fc4.bias = torch.nn.Parameter(torch.DoubleTensor(bias).view(-1, 6 * self.num_layers))
+        self.character = character
 
     # @staticmethod
     # def rotate(origin, point, angle):
@@ -202,23 +203,16 @@ class Net(nn.Module):
     # def stn(self, x, body, head, left_leg, right_leg):
     def stn(self, x):
         affine_transforms = self.localization(x[0])
-        a = torch.max(x[0][:, :3, :, :])
-        b = torch.min(x[0][:, :3, :, :])
-        # print(angles)
-        # image_center = torch.tensor([0, 0] * batch_size).view(2, -1).to(device)
-        # tensor_0 = torch.tensor([0] * batch_size, dtype=torch.float64).to(device)
-        # angles[0] += np.math.radians(20)
-        # for i in range(len(angles)):
-        #     if ImageGenerator.PARENTS[i] is not None:
-        #         angles[i] += angles[ImageGenerator.PARENTS[i]]
         parent_transforms_3x3_matrices = []
         close_to_eye_matrices = []
         translation_values = []
+        part_layers = []
+        part_layers_dict = dict()
         affine_matrix_last_row = torch.tensor(batch_size * [0, 0, 1]).view(-1, 1, 3).to(device)
-        for i, part in enumerate(ImageGenerator.DRAWING_ORDER):
+        for i, part in enumerate(self.character.char_tree_array):
             part_transform = affine_transforms[:, i * 6: (i * 6) + 6].view(-1, 2, 3).to(device)
-            part_transform[:, 0, 2] /= (ImageGenerator.IMAGE_SIZE / 2)
-            part_transform[:, 1, 2] /= (ImageGenerator.IMAGE_SIZE / 2)
+            part_transform[:, 0, 2] /= (self.character.image_size / 2)
+            part_transform[:, 1, 2] /= (self.character.image_size / 2)
             rotation_scaling_matrix = part_transform[:, :, 0: 2]
             close_to_eye_matrices.append(
                 (torch.matmul(rotation_scaling_matrix, torch.transpose(rotation_scaling_matrix, 1, 2))).view(-1, 4))
@@ -227,13 +221,17 @@ class Net(nn.Module):
             # TODO: uncomment if I want to impose a skeleton structure
             part_transform_3x3_matrix = torch.cat([part_transform, affine_matrix_last_row], 1)
             if i != 0:
-                parent_transform_3x3_matrix = parent_transforms_3x3_matrices[ImageGenerator.PARENTS[i]]
+                parent_transform_3x3_matrix = parent_transforms_3x3_matrices[self.character.parents[i]]
                 part_transform_3x3_matrix = torch.matmul(part_transform_3x3_matrix, parent_transform_3x3_matrix)
                 part_transform = part_transform_3x3_matrix[:, :2, :]
             parent_transforms_3x3_matrices.append(part_transform_3x3_matrix)
             part_grid = F.affine_grid(part_transform, x[i + 1].size(), align_corners=False)
             part_layer = F.grid_sample(x[i + 1], part_grid, align_corners=False, padding_mode='border')
             part_layer = normalize_image(part_layer, 0, 1)
+            part_layers.append(part_layer)
+            part_layers_dict[part] = i
+        for i, part in enumerate(self.character.drawing_order):
+            part_layer = part_layers[part_layers_dict[part]]
             if i == 0:
                 stack = part_layer
             else:
@@ -256,7 +254,7 @@ class Net(nn.Module):
 
     def forward(self, x):
         x = x.permute(0, 3, 1, 2)
-        x = list(torch.split(x, int(x.shape[2] / (num_layers + 1)), dim=2))
+        x = list(torch.split(x, int(x.shape[2] / (self.num_layers + 1)), dim=2))
         x = self.stn(x)
         return x
 
@@ -285,7 +283,7 @@ def train(net_path=None):
     kernel_sizes = [51, 35, 25, 17, 13, 9, 7, 5, 3]
     net = create_net(net_path)
     criterion = nn.MSELoss()
-    canonical = create_canonical()
+    canonical = create_canonical(char)
     optimizer = optim.Adam(net.parameters(), lr=0.00001)
 
     # num_patches = 1
@@ -357,20 +355,20 @@ def train(net_path=None):
 
 
 def create_net(net_path):
-    net = Net().double()
+    net = Net(char).double()
     net.to(device)
     if net_path:
         net.load_state_dict(torch.load(net_path + '\\aaa_net.pth'))
     return net
 
 
-def create_canonical():
-    origin = ImageGenerator.create_body_hierarchy([0] * num_layers)
-    canonical = ImageGenerator.generate_layers(origin, as_tensor=True, transform=False)
+def create_canonical(character):
+    num_layers = len(character.char_tree_array)
+    canonical = ImageGenerator.generate_layers(character, [0] * num_layers, as_tensor=True, transform=False)
     canonical = torch.cat(batch_size * [canonical]).reshape(
         batch_size,
         -1,
-        ImageGenerator.IMAGE_SIZE,
+        character.image_size,
         4).to(device)
     return canonical
 
@@ -512,19 +510,19 @@ def calc_depth_loss(grad_gaussian, criterion, inputs, outputs):
     return depth_loss
 
 
-def generate_patch_indices(epoch, kernel_sizes, num_patches, patch_size):
-    patch_index = int(num_patches * (float(epoch) / float(len(kernel_sizes))))
-    if patch_index > 0:
-        rand_start_x = np.random.randint(0, patch_index * patch_size)
-        rand_end_x = rand_start_x + (num_patches - patch_index) * patch_size
-        rand_start_y = np.random.randint(0, patch_index * patch_size)
-        rand_end_y = rand_start_y + (num_patches - patch_index) * patch_size
-    else:
-        rand_start_x = 0
-        rand_end_x = ImageGenerator.IMAGE_SIZE
-        rand_start_y = 0
-        rand_end_y = ImageGenerator.IMAGE_SIZE
-    return rand_end_x, rand_end_y, rand_start_x, rand_start_y
+# def generate_patch_indices(epoch, kernel_sizes, num_patches, patch_size):
+#     patch_index = int(num_patches * (float(epoch) / float(len(kernel_sizes))))
+#     if patch_index > 0:
+#         rand_start_x = np.random.randint(0, patch_index * patch_size)
+#         rand_end_x = rand_start_x + (num_patches - patch_index) * patch_size
+#         rand_start_y = np.random.randint(0, patch_index * patch_size)
+#         rand_end_y = rand_start_y + (num_patches - patch_index) * patch_size
+#     else:
+#         rand_start_x = 0
+#         rand_end_x = ImageGenerator.IMAGE_SIZE
+#         rand_start_y = 0
+#         rand_end_y = ImageGenerator.IMAGE_SIZE
+#     return rand_end_x, rand_end_y, rand_start_x, rand_start_y
 
 
 def calc_translation_loss(translation_values):
@@ -559,21 +557,13 @@ def check_inputs_outputs(g_inputs, g_outputs, iteration):
 
 
 def test(net, path):
-    origin = ImageGenerator.create_body_hierarchy([0] * num_layers)
-    canonical = ImageGenerator.generate_layers(origin, as_tensor=True, transform=False)
-
-    canonical = torch.cat(batch_size * [canonical]).reshape(
-        batch_size,
-        -1,
-        ImageGenerator.IMAGE_SIZE,
-        4).to(device)
-
+    canonical = create_canonical(net.character)
     with torch.no_grad():
         data = testset[0]
         images, labels = data[0].to(device), data[1].to(device)
         print(labels)
         outputs, _, _ = net(torch.cat([images, canonical], dim=1))
-        images = images.view(-1, ImageGenerator.IMAGE_SIZE, ImageGenerator.IMAGE_SIZE, 4)
+        images = images.view(-1, net.character.image_size, net.character.image_size, 4)
         image = (torch.cat([images[i] for i in range(batch_size)], dim=1))
         output = (torch.cat([outputs[i] for i in range(batch_size)], dim=2)).permute(1, 2, 0)
         imsave(image.cpu(), "input", path)
@@ -588,7 +578,7 @@ def test(net, path):
 
 def main():
     # path = ImageGenerator.PATH + 'Plots\\' + '11-08-2021 16-56-12 (Good 15 range)'
-    net, path = train(ImageGenerator.PATH + 'Plots\\' + '16-08-2021 07-52-39 (Good 25 range)')
+    net, path = train()
     test(net, path)
 
 

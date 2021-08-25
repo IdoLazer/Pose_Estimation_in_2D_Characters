@@ -1,11 +1,11 @@
+import json
 import math
+from pathlib import Path
 
 import numpy as np
 import torch
 from PIL import Image, ImageDraw, ImageOps
 from tqdm import tqdm
-import matplotlib.pyplot as plt
-from pathlib import Path
 
 source_path = Path(__file__).resolve()
 source_dir = source_path.parent
@@ -47,43 +47,6 @@ class Vector2D:
         return "({0},{1})".format(self.x, self.y)
 
 
-IMAGE_SIZE = 128
-CHARACTER_PATH = PATH + 'Character Layers\\'
-CHARACTER_DICT = {
-    'Root': {'name': 'Root', 'path': CHARACTER_PATH + 'Lower Torso.png', 'displacement': Vector2D(0, 8),
-             'children': ['Chest', 'Left Shoulder', 'Upper Right Leg'], 'parent': 'None'},
-    'Chest': {'name': 'Chest', 'path': CHARACTER_PATH + 'Chest.png', 'displacement': Vector2D(0, 7),
-              'children': ['Head', 'Left Shoulder', 'Right Shoulder'], 'parent': 'Root'},
-    'Head': {'name': 'Head', 'path': CHARACTER_PATH + 'Head.png', 'displacement': Vector2D(0, 20),
-             'children': [], 'parent': 'Chest'},
-    'Left Shoulder': {'name': 'Left Shoulder', 'path': CHARACTER_PATH + 'Left Shoulder.png',
-                      'displacement': Vector2D(-10, 13),
-                      'children': ['Left Arm'], 'parent': 'Chest'},
-    'Left Arm': {'name': 'Left Arm', 'path': CHARACTER_PATH + 'Left Arm.png', 'displacement': Vector2D(-6, -15),
-                 'children': [], 'parent': 'Left Shoulder'},
-    'Right Shoulder': {'name': 'Right Shoulder', 'path': CHARACTER_PATH + 'Right Shoulder.png',
-                       'displacement': Vector2D(11, 13),
-                       'children': ['Right Arm'], 'parent': 'Chest'},
-    'Right Arm': {'name': 'Right Arm', 'path': CHARACTER_PATH + 'Right Arm.png', 'displacement': Vector2D(4, -16),
-                  'children': [], 'parent': 'Right Shoulder'},
-    'Upper Left Leg': {'name': 'Upper Left Leg', 'path': CHARACTER_PATH + 'Upper Left Leg.png',
-                       'displacement': Vector2D(-5, -8),
-                       'children': ['Lower Left Leg'], 'parent': 'Root'},
-    'Lower Left Leg': {'name': 'Lower Left Leg', 'path': CHARACTER_PATH + 'Lower Left Leg.png',
-                       'displacement': Vector2D(0, -28),
-                       'children': [''], 'parent': 'Upper Left Leg'},
-    'Upper Right Leg': {'name': 'Upper Right Leg', 'path': CHARACTER_PATH + 'Upper Right Leg.png',
-                        'displacement': Vector2D(5, -8),
-                        'children': ['Lower Right Leg'], 'parent': 'Root'},
-    'Lower Right Leg': {'name': 'Lower Right Leg', 'path': CHARACTER_PATH + 'Lower Right Leg.png',
-                        'displacement': Vector2D(1, -26),
-                        'children': [''], 'parent': 'Upper Right Leg'},
-
-}
-DRAWING_ORDER = ['Root', 'Upper Left Leg', 'Lower Left Leg', 'Upper Right Leg', 'Lower Right Leg', 'Chest',
-                 'Head', 'Left Shoulder', 'Left Arm', 'Right Shoulder', 'Right Arm']
-PARENTS = [None, 0, 1, 0, 3, 0, 5, 5, 7, 5, 9]
-
 images = dict()
 
 # sample_params = [5, 14, -29, -16, 22, -10, -22, 14, -21, -26, -21]
@@ -91,77 +54,80 @@ sample_params = [5, 14, -29, -16, 22, -10, -22, 14, -21, -26, -21]
 
 
 class Character:
-    image_size: int
-    path: str
-    hierarchy_dict: dict
-    drawing_order: list
-    parents: list
-    sample_params: list
+    image_size: int  # height in pixels of character image (each layer should be the same size and have height = width)
+    path: str  # path to character layers directory
+    char_tree: dict  # a dictionary representing the hierarchical structure of the layers
+    layers_info: dict  # a dict with relevant info of each layer
+    char_tree_array: list  # the char tree as an array - ordered in a BFS
+    sample_params: list  # starting pose for character creation, ordered respective to the char_tree_array
+    parents: list  # each part parent's index, ordered respective to the char_tree_array
+    drawing_order: list  # the order layers should be drawn (by layer name)
+    canonical_bias_dict: dict  # a dict with default values for the network to use as bias in the final fc layer
 
-    def __init__(self):
-        self.image_size = 128
-        self.path = PATH + 'Character Layers\\Default Character\\'
-        self.hierarchy_dict = {
-            'Root': {'name': 'Root', 'path': self.path + 'Lower Torso.png',
-                     'displacement': (0, 8),
-                     'children': ['Chest', 'Left Shoulder', 'Upper Right Leg'], 'parent': 'None'},
-            'Chest': {'name': 'Chest', 'path': self.path + 'Chest.png', 'displacement': (0, 7),
-                      'children': ['Head', 'Left Shoulder', 'Right Shoulder'], 'parent': 'Root'},
-            'Head': {'name': 'Head', 'path': self.path + 'Head.png', 'displacement': (0, 20),
-                     'children': [], 'parent': 'Chest'},
-            'Left Shoulder': {'name': 'Left Shoulder', 'path': self.path + 'Left Shoulder.png',
-                              'displacement': (-10, 13),
-                              'children': ['Left Arm'], 'parent': 'Chest'},
-            'Left Arm': {'name': 'Left Arm', 'path': self.path + 'Left Arm.png', 'displacement': (-6, -15),
-                         'children': [], 'parent': 'Left Shoulder'},
-            'Right Shoulder': {'name': 'Right Shoulder', 'path': self.path + 'Right Shoulder.png',
-                               'displacement': (11, 13),
-                               'children': ['Right Arm'], 'parent': 'Chest'},
-            'Right Arm': {'name': 'Right Arm', 'path': self.path + 'Right Arm.png', 'displacement': (4, -16),
-                          'children': [], 'parent': 'Right Shoulder'},
-            'Upper Left Leg': {'name': 'Upper Left Leg', 'path': self.path + 'Upper Left Leg.png',
-                               'displacement': (-5, -8),
-                               'children': ['Lower Left Leg'], 'parent': 'Root'},
-            'Lower Left Leg': {'name': 'Lower Left Leg', 'path': self.path + 'Lower Left Leg.png',
-                               'displacement': (0, -28),
-                               'children': [''], 'parent': 'Upper Left Leg'},
-            'Upper Right Leg': {'name': 'Upper Right Leg', 'path': self.path + 'Upper Right Leg.png',
-                                'displacement': (5, -8),
-                                'children': ['Lower Right Leg'], 'parent': 'Root'},
-            'Lower Right Leg': {'name': 'Lower Right Leg', 'path': self.path + 'Lower Right Leg.png',
-                                'displacement': (1, -26),
-                                'children': [''], 'parent': 'Upper Right Leg'},
-        }
-        self.drawing_order = ['Root', 'Upper Left Leg', 'Lower Left Leg', 'Upper Right Leg', 'Lower Right Leg', 'Chest',
-                              'Head', 'Left Shoulder', 'Left Arm', 'Right Shoulder', 'Right Arm']
-        self.parents = [None, 0, 1, 0, 3, 0, 5, 5, 7, 5, 9]
-        self.sample_params = [0] * 11
+    def __init__(self, path=None):
+        if path is not None:
+            char = json.load(open(path, 'r'))
+            self.image_size = char['image_size']
+            self.path = char['path']
+            self.char_tree = char['char_tree']
+            self.layers_info = char['layers_info']
+            for key in self.layers_info:
+                item = self.layers_info[key]
+                item['displacement'] = Vector2D(item['displacement'][0], item['displacement'][1])
+            self.char_tree_array = char['char_tree_array']
+            self.sample_params = char['sample_params']
+            self.drawing_order = char['drawing_order']
+            self.parents = char['parents']
+            self.canonical_bias_dict =  char['canonical_bias_dict']
+
+
+    @staticmethod
+    def create_default_config_file(path, root_name, char_tree, drawing_order):
+        char = Character()
+
+        # find image size
+        char.image_size = Image.open(path + root_name + '.png').size[0]
+        char.path = path
+        char.char_tree = char_tree
+        char.layers_info = dict()
+        char_tree_array = ["Root"]
+        index = 0
+        parents = [None]
+        while index < len(char_tree_array):
+            part = char_tree_array[index]
+            char.layers_info[part] = \
+                {
+                    "displacement": [0, 0],
+                    "name": part,
+                    "path": path + (root_name if part == "Root" else part) + '.png'
+                }
+            if part in char_tree:
+                char_tree_array += char_tree[part]
+                parents += [index] * len(char_tree[part])
+            index += 1
+        char.char_tree_array = char_tree_array
+        char.drawing_order = drawing_order
+        char.parents = parents
+        char.sample_params = [0] * len(char.char_tree_array)
+        json.dump(char, open(char.path + 'Config.txt', 'w'), default=lambda o: o.__dict__,
+                  sort_keys=True, indent=4)
 
 
 class BodyPart:
-    def __init__(self, parent, name, path, shape, dist_from_parent, inner_rotation, color):
+    def __init__(self, parent, name, path, dist_from_parent, inner_rotation):
         self.parent = parent
         self.name = name
-        self.im = Image.new("RGBA", (IMAGE_SIZE, IMAGE_SIZE))
         if name not in images and path is not None:
             self.im = Image.open(path)
             images[name] = self.im
         elif path is not None:
             self.im = images[name]
-        elif shape is not None and color is not None:
-            draw = ImageDraw.Draw(self.im)
-            image_center = Vector2D(IMAGE_SIZE / 2, IMAGE_SIZE / 2)
-            shape = translate_points(shape, image_center)
-            draw.polygon([(shape[i].x, IMAGE_SIZE - shape[i].y) for i in range(len(shape))], fill=color,
-                         outline=color)
         joint_rotation = math.radians(0)
         center = Vector2D()
         if parent is not None:
             parent.__add_child(self)
             joint_rotation = parent.rotation
             center = parent.position
-        # create_affine_transform(math.radians(inner_rotation), Vector2D(), dist_from_parent,
-        #                         name, True)  # TODO: This is just to generate initial transformations
         self.position = rotate(center, center + dist_from_parent, -joint_rotation)
         self.center = center
         self.rotation = joint_rotation + math.radians(inner_rotation)
@@ -244,15 +210,15 @@ def traverse_tree(cur, size, layers, draw_skeleton, skeleton_draw, transform=Tru
 def generate_layers(character, angles, draw_skeleton=False, as_tensor=False, transform=True, print_dict=False):
     origin = create_body_hierarchy(angles, character)
     layers = {}
-    skeleton = Image.new('RGBA', (character['image_size'], character['image_size']))
+    skeleton = Image.new('RGBA', (character.image_size, character.image_size))
     skeleton_draw = ImageDraw.Draw(skeleton)
-    traverse_tree(origin, character['image_size'], layers, draw_skeleton, skeleton_draw, transform, print_dict)
+    traverse_tree(origin, character.image_size, layers, draw_skeleton, skeleton_draw, transform, print_dict)
     if not as_tensor:
         layers['Skeleton'] = skeleton
         return layers
     layers_list = []
-    for part in character['drawing_order']:
-        im = Image.new("RGBA", (character['im_size'], character['im_size']))
+    for part in character.drawing_order:
+        im = Image.new("RGBA", (character.image_size, character.image_size))
         alpha = ImageOps.invert(layers[part].split()[-1])
         layer = Image.composite(im, layers[part], alpha)
         # layer = layer.convert("RGB")
@@ -262,63 +228,48 @@ def generate_layers(character, angles, draw_skeleton=False, as_tensor=False, tra
     return torch.tensor(np.array(layers_list, dtype='float64'))
 
 
-# def transform_image(layers, transforms):
-#     new_layers = []
-#     for i in range(len(layers)):
-#         new_layers.append(np.asarray(layers[i].transform(
-#             (IMAGE_SIZE, IMAGE_SIZE),
-#             Image.AFFINE,
-#             data=transforms[i].flatten()[:6],
-#             resample=Image.BILINEAR)))
-#     im = np.array(new_layers).sum(axis=0).astype('uint8')
-#     return im
-
-
 def create_image(character, angles, draw_skeleton=False, omit_layers=False, print_dict=False, as_image=False):
-    drawing_order = DRAWING_ORDER + ['Skeleton'] if character is None else character['drawing_order'] + ['Skeleton']
+    drawing_order = character.drawing_order + ['Skeleton']
     layers = generate_layers(character, angles, draw_skeleton, print_dict=print_dict)
-    # new_layers = []
-    im_size = IMAGE_SIZE if character is None else character['image_size']
+    im_size = character.image_size
     im = Image.new("RGBA", (im_size, im_size))
     for part in drawing_order:
         if omit_layers and part != 'Right Arm':
             continue
         alpha = ImageOps.invert(layers[part].split()[-1])
         im = Image.composite(im, layers[part], alpha)
-    # return np.array(new_layers).sum(axis=0).astype('uint8')
-    # im = im.convert("RGB")
-    # im.show()
     return im.convert("RGB") if as_image else np.array(im).astype('uint8')
 
 
-def create_body_hierarchy(parameters, character=None):
-    # print("sample_params = " + str(parameters))
-    if character is not None:
-        for i in range(len(parameters)):
-            parameters[i] += character['sample_params'][i]
+def create_body_hierarchy(parameters, character):
+    for i in range(len(parameters)):
+        parameters[i] += character.sample_params[i]
     # parameters = sample_params  # TODO: Always comment out when starting
-    parts_dict = dict()
-    parts_dict['None'] = None
-    for i, part in enumerate(DRAWING_ORDER if character is None else character['drawing_order']):
-        cur = CHARACTER_DICT[part] if character is None else character['hierarchy_dict'][part]
-        parts_dict[part] = BodyPart(parts_dict[cur['parent']], cur['name'], cur['path'], None,
-                                    Vector2D(float(cur['displacement'][0]), float(cur['displacement'][1])),
-                                    parameters[i], None)
-    return parts_dict['Root']
+    parts_list = []
+    for i, part in enumerate(character.char_tree_array):
+        layer_info = character.layers_info[part]
+        parent = None if character.parents[i] is None else parts_list[character.parents[i]]
+        parts_list.append(BodyPart(parent, layer_info['name'], layer_info['path'], layer_info['displacement'],
+                                   parameters[i]))
+    return parts_list[0]
 
 
-def load_data(batch_size=4):
-    samples_num = 10000
-    num_layers = len(CHARACTER_DICT)
-    labels = np.random.randint(-35, 35, size=samples_num * num_layers).reshape((samples_num, num_layers))
+def load_data(char_name, batch_size=4, samples_num=10000):
+    try:
+        char = Character(PATH + 'Character Layers\\' + char_name + '\\Config.txt')
+    except OSError:
+        print("Couldn't find config file for " + char_name)
+        return None
+    num_layers = len(char.char_tree_array)
+    labels = np.random.randint(-15, 15, size=samples_num * num_layers).reshape((samples_num, num_layers))
     data = []
     im_batch = []
     label_batch = []
     i = 1
     for index in tqdm(range(len(labels))):
         angles = labels[index]
-        im = create_image(None, angles, draw_skeleton=False,
-                          print_dict=False)  # , omit_layers=(index // batch_size) % 2 == 1)
+        im = create_image(char, angles, draw_skeleton=False,
+                          print_dict=False, as_image=False)
         im = (im - 127.5) / 127.5
         im_batch.append(im)
         label_batch.append(angles)
@@ -331,16 +282,36 @@ def load_data(batch_size=4):
 
     print("finished forging data")
     cutoff = int(len(data) * 0.8)
-    return data[:cutoff], data[cutoff:]
+    return data[:cutoff], data[cutoff:], char
 
-
-import json
 
 if __name__ == "__main__":
     # char = Character()
     # json.dump(char, open(char.path + 'Config', 'w'), default=lambda o: o.__dict__,
     #         sort_keys=True, indent=4)
-    char = json.load(open(PATH + 'Character Layers\\Cartman\\Config.txt', 'r'))
-    angles = [0] * 11
-    im = create_image(char, angles, draw_skeleton=False, print_dict=False, as_image=True)
-    im.show()
+    load_data('Aang', batch_size=4, samples_num=25)
+    # Character.create_default_config_file(PATH + 'Character Layers\\Default Character\\', 'Lower Torso',
+    #                                      {'Root': ['Chest', 'Upper Left Leg', 'Upper Right Leg'],
+    #                                       'Chest': ['Head', 'Left Shoulder', 'Right Shoulder'],
+    #                                       'Left Shoulder': ['Left Arm'],
+    #                                       'Right Shoulder': ['Right Arm'],
+    #                                       'Upper Left Leg': ['Lower Left Leg'],
+    #                                       'Upper Right Leg': ['Lower Right Leg'],
+    #                                       },
+    #                                      ["Root",
+    #                                       "Upper Left Leg",
+    #                                       "Lower Left Leg",
+    #                                       "Upper Right Leg",
+    #                                       "Lower Right Leg",
+    #                                       "Chest",
+    #                                       "Head",
+    #                                       "Left Shoulder",
+    #                                       "Left Arm",
+    #                                       "Right Shoulder",
+    #                                       "Right Arm"])
+    #
+    # char = Character(PATH + 'Character Layers\\Aang\\Config.txt')
+    # angles = char.sample_params
+    # im = create_image(char, angles, draw_skeleton=True, print_dict=False, as_image=True)
+    # im.show()
+#

@@ -1,0 +1,168 @@
+{
+    "canonical_bias_dict": {
+	"Root" : [0.992546151641322, 0.12186934340514748, 4.874773736205899, -0.12186934340514748, 0.992546151641322, 39.70184606565288],
+	"Left Shoulder" : [0.9998476951563913, -0.017452406437283508, 12.919423227012738, 0.017452406437283508, 0.9998476951563913, 58.06496652148182],
+	"Left Arm" : [0.9659258262890683, -0.2588190451025208, 12.049141247281195, 0.2588190451025208, 0.9659258262890683, 25.744643551348393],
+	"Left Upper Leg" : [1.0, 0.0, 15.409581969644856, -0.0, 1.0, -3.4458833898080172],
+	"Left Lower Leg" : [0.9986295347545738, -0.052335956242943835, 28.95693977875328, 0.052335956242943835, 0.9986295347545738, -67.02224591531497],
+	"Right Shoulder" : [0.981627183447664, 0.1908089953765448, -7.212561409189391, -0.1908089953765448, 0.981627183447664, 56.342215721969744],
+	"Right Arm" : [0.9510565162951535, 0.3090169943749474, -13.856361648307514, -0.3090169943749474, 0.9510565162951535, 20.18130984126957],
+	"Right Upper Leg" : [0.9510565162951535, 0.3090169943749474, -6.041996851423258, -0.3090169943749474, 0.9510565162951535, -4.222872649573285],
+	"Right Lower Leg" : [0.9205048534524404, 0.39073112848927377, -22.449901804830727, -0.39073112848927377, 0.9205048534524404, -72.54228005990234],
+	"Head" : [0.9612616959383189, 0.27563735581699916, 15.718528183886887, -0.27563735581699916, 0.9612616959383189, 68.08111805538688]
+	},
+
+    "char_tree": {
+        "Left Shoulder": [
+            "Left Arm"
+        ],
+        "Left Upper Leg": [
+            "Left Lower Leg"
+        ],
+        "Right Shoulder": [
+            "Right Arm"
+        ],
+        "Right Upper Leg": [
+            "Right Lower Leg"
+        ],
+        "Root": [
+            "Left Shoulder",
+            "Left Upper Leg",
+            "Right Shoulder",
+            "Left Upper Leg",
+            "Head"
+        ]
+    },
+    "char_tree_array": [
+        "Root",
+        "Left Shoulder",
+        "Left Upper Leg",
+        "Right Shoulder",
+        "Right Upper Leg",
+        "Head",
+        "Left Arm",
+        "Left Lower Leg",
+        "Right Arm",
+        "Right Lower Leg"
+    ],
+    "drawing_order": [
+        "Left Arm",
+        "Left Shoulder",
+        "Left Lower Leg",
+        "Left Upper Leg",
+        "Head",
+        "Root",
+        "Right Lower Leg",
+        "Right Upper Leg",
+        "Right Arm",
+        "Right Shoulder"
+    ],
+    "image_size": 256,
+    "layers_info": {
+        "Head": {
+            "displacement": [
+                0,
+                30
+            ],
+            "name": "Head",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang\\Head.png"
+        },
+        "Left Arm": {
+            "displacement": [
+                -5,
+                -36
+            ],
+            "name": "Left Arm",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang\\Left Arm.png"
+        },
+        "Left Lower Leg": {
+            "displacement": [
+                -10,
+                -65
+            ],
+            "name": "Left Lower Leg",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang\\Left Lower Leg.png"
+        },
+        "Left Shoulder": {
+            "displacement": [
+                -16,
+                16
+            ],
+            "name": "Left Shoulder",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang\\Left Shoulder.png"
+        },
+        "Left Upper Leg": {
+            "displacement": [
+                -10,
+                -45
+            ],
+            "name": "Left Upper Leg",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang\\Left Upper Leg.png"
+        },
+        "Right Arm": {
+            "displacement": [
+                9,
+                -38
+            ],
+            "name": "Right Arm",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang\\Right Arm.png"
+        },
+        "Right Lower Leg": {
+            "displacement": [
+                10,
+                -70
+            ],
+            "name": "Right Lower Leg",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang\\Right Lower Leg.png"
+        },
+        "Right Shoulder": {
+            "displacement": [
+                16,
+                16
+            ],
+            "name": "Right Shoulder",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang\\Right Shoulder.png"
+        },
+        "Right Upper Leg": {
+            "displacement": [
+                10,
+                -45
+            ],
+            "name": "Right Upper Leg",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang\\Right Upper Leg.png"
+        },
+        "Root": {
+            "displacement": [
+                0,
+                40
+            ],
+            "name": "Root",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang\\Torso.png"
+        }
+    },
+    "parents": [
+        null,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        2,
+        3,
+        4
+    ],
+    "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang\\",
+    "sample_params": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    ]
+}
