@@ -22,7 +22,7 @@ batch_size = 4
 grayscale = torchvision.transforms.Grayscale().to(device)
 grayscale.requires_grad_(False)
 
-trainset, testset, char = ImageGenerator.load_data('Aang', batch_size=4, samples_num=25)
+trainset, testset, char = ImageGenerator.load_data('Cartman', batch_size=4, samples_num=2000, angle_range=15)
 
 # CANONICAL_BIAS_DICT = {  # Here we assume no skeleton structure so layers are not affected by each other
 #     'Root' : [0.9961946980917455, 0.08715574274765817, 0.6972459419812653, -0.08715574274765817, 0.9961946980917455, 7.969557584733964],
@@ -63,7 +63,7 @@ trainset, testset, char = ImageGenerator.load_data('Aang', batch_size=4, samples
 #                   0.35836794954530027, 0.9335804264972017, -0.2557931034708817 * (ImageGenerator.IMAGE_SIZE / 2)],
 # }
 
-LAMBDA = 0.0006
+LAMBDA = 0.006
 ALPHA = 0.05
 
 
@@ -150,7 +150,7 @@ class Net(nn.Module):
         torch.nn.init.xavier_uniform_(self.fc4.weight, 0.3)
         with torch.no_grad():
             bias = []
-            for part in character.drawing_order:
+            for part in character.char_tree_array:
                 bias += character.canonical_bias_dict[part]
             self.fc4.bias = torch.nn.Parameter(torch.DoubleTensor(bias).view(-1, 6 * self.num_layers))
         self.character = character
@@ -284,7 +284,7 @@ def train(net_path=None):
     net = create_net(net_path)
     criterion = nn.MSELoss()
     canonical = create_canonical(char)
-    optimizer = optim.Adam(net.parameters(), lr=0.00001)
+    optimizer = optim.Adam(net.parameters(), lr=0.001)
 
     # num_patches = 1
     # patch_size = ImageGenerator.IMAGE_SIZE // num_patches #len(kernel_sizes)

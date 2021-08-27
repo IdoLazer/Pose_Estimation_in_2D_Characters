@@ -78,7 +78,7 @@ class Character:
             self.sample_params = char['sample_params']
             self.drawing_order = char['drawing_order']
             self.parents = char['parents']
-            self.canonical_bias_dict =  char['canonical_bias_dict']
+            self.canonical_bias_dict = char['canonical_bias_dict']
 
 
     @staticmethod
@@ -128,6 +128,8 @@ class BodyPart:
             parent.__add_child(self)
             joint_rotation = parent.rotation
             center = parent.position
+        # create_affine_transform(math.radians(inner_rotation), Vector2D(), dist_from_parent,
+        #                         name, True, self.im.size[0])  # TODO: This is just to generate initial transformations
         self.position = rotate(center, center + dist_from_parent, -joint_rotation)
         self.center = center
         self.rotation = joint_rotation + math.radians(inner_rotation)
@@ -155,7 +157,7 @@ def translate_points(points, displacement):
     return [points[i] + displacement for i in range(len(points))]
 
 
-def create_affine_transform(angle, center, displacement, name, print_dict=False):
+def create_affine_transform(angle, center, displacement, name, print_dict=False, image_size=128):
     dx, dy = (displacement.x, -displacement.y) if print_dict else \
         (displacement.x, -displacement.y)
     cos = math.cos(angle)
@@ -170,7 +172,7 @@ def create_affine_transform(angle, center, displacement, name, print_dict=False)
     f = y - d * nx - e * ny
     if print_dict:
         bias = [a, b, c, d, e, f]
-        print('\'' + name + '\' : ' + str(bias) + ',')
+        print('\"' + name + '\" : ' + str(bias) + ',')
     return np.array([
         [a, b, c],
         [d, e, f],
@@ -217,7 +219,7 @@ def generate_layers(character, angles, draw_skeleton=False, as_tensor=False, tra
         layers['Skeleton'] = skeleton
         return layers
     layers_list = []
-    for part in character.drawing_order:
+    for part in character.char_tree_array:
         im = Image.new("RGBA", (character.image_size, character.image_size))
         alpha = ImageOps.invert(layers[part].split()[-1])
         layer = Image.composite(im, layers[part], alpha)
@@ -254,14 +256,14 @@ def create_body_hierarchy(parameters, character):
     return parts_list[0]
 
 
-def load_data(char_name, batch_size=4, samples_num=10000):
+def load_data(char_name, batch_size=4, samples_num=10000, angle_range=15):
     try:
         char = Character(PATH + 'Character Layers\\' + char_name + '\\Config.txt')
     except OSError:
         print("Couldn't find config file for " + char_name)
         return None
     num_layers = len(char.char_tree_array)
-    labels = np.random.randint(-15, 15, size=samples_num * num_layers).reshape((samples_num, num_layers))
+    labels = np.random.randint(-angle_range, angle_range, size=samples_num * num_layers).reshape((samples_num, num_layers))
     data = []
     im_batch = []
     label_batch = []
@@ -289,7 +291,7 @@ if __name__ == "__main__":
     # char = Character()
     # json.dump(char, open(char.path + 'Config', 'w'), default=lambda o: o.__dict__,
     #         sort_keys=True, indent=4)
-    load_data('Aang', batch_size=4, samples_num=25)
+    load_data('Cartman', batch_size=4, samples_num=25)
     # Character.create_default_config_file(PATH + 'Character Layers\\Default Character\\', 'Lower Torso',
     #                                      {'Root': ['Chest', 'Upper Left Leg', 'Upper Right Leg'],
     #                                       'Chest': ['Head', 'Left Shoulder', 'Right Shoulder'],
