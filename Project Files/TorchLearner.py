@@ -22,7 +22,7 @@ batch_size = 4
 grayscale = torchvision.transforms.Grayscale().to(device)
 grayscale.requires_grad_(False)
 
-trainset, testset, char = ImageGenerator.load_data('Cartman', batch_size=4, samples_num=2000, angle_range=15)
+trainset, testset, char = ImageGenerator.load_data('Aang', batch_size=4, samples_num=2000, angle_range=25)
 
 # CANONICAL_BIAS_DICT = {  # Here we assume no skeleton structure so layers are not affected by each other
 #     'Root' : [0.9961946980917455, 0.08715574274765817, 0.6972459419812653, -0.08715574274765817, 0.9961946980917455, 7.969557584733964],
@@ -227,7 +227,6 @@ class Net(nn.Module):
             parent_transforms_3x3_matrices.append(part_transform_3x3_matrix)
             part_grid = F.affine_grid(part_transform, x[i + 1].size(), align_corners=False)
             part_layer = F.grid_sample(x[i + 1], part_grid, align_corners=False, padding_mode='border')
-            part_layer = normalize_image(part_layer, 0, 1)
             part_layers.append(part_layer)
             part_layers_dict[part] = i
         for i, part in enumerate(self.character.drawing_order):
@@ -237,14 +236,14 @@ class Net(nn.Module):
             else:
                 # part_alpha = (part_layer[:, -1, :, :]).clamp(0, 1).view(batch_size, 1, ImageGenerator.IMAGE_SIZE,
                 #                                                         ImageGenerator.IMAGE_SIZE)
-                part_alpha = 1 - (part_layer[:, -1, :, :]).unsqueeze(1)
+                part_alpha = normalize_image((part_layer[:, -1, :, :]).unsqueeze(1), 0, 1)
                 # imshow(part_alpha[0].cpu().view(1, 128, 128).permute(1, 2, 0), '')
                 # imshow(stack[0].cpu().view(4, 128, 128).permute(1, 2, 0), '')
-                stack = (stack * part_alpha)#.clamp(-1)
+                stack = (stack * (1 - part_alpha))#.clamp(-1)
                 # imshow(stack[0].cpu().view(4, 128, 128).permute(1, 2, 0), '')
                 # stack_alpha = (stack[:, -1, :, :]).clamp(0, 1)
                 # part_layer = (part_layer - 2 * stack_alpha).clamp(-1, 1)
-                stack = (stack + part_layer)#.clamp(-1)
+                stack = (stack + (part_layer * part_alpha))#.clamp(-1)
                 # imshow(stack[0].cpu().view(4, 128, 128).permute(1, 2, 0), '')
         stack = normalize_image(stack, -1, 1)
 
@@ -253,7 +252,6 @@ class Net(nn.Module):
         return stack, close_to_eye_matrices, translation_values
 
     def forward(self, x):
-        x = x.permute(0, 3, 1, 2)
         x = list(torch.split(x, int(x.shape[2] / (self.num_layers + 1)), dim=2))
         x = self.stn(x)
         return x
@@ -284,7 +282,7 @@ def train(net_path=None):
     net = create_net(net_path)
     criterion = nn.MSELoss()
     canonical = create_canonical(char)
-    optimizer = optim.Adam(net.parameters(), lr=0.001)
+    optimizer = optim.Adam(net.parameters(), lr=0.0005)
 
     # num_patches = 1
     # patch_size = ImageGenerator.IMAGE_SIZE // num_patches #len(kernel_sizes)
@@ -299,7 +297,7 @@ def train(net_path=None):
         running_losses = [0.0, 0.0, 0.0, 0.0]
         losses_arrays = [[], [], [], []]
         iterations = []
-        num_iter_to_print = int(70 * (0.2 * epoch + 1))
+        num_iter_to_print = int(50 * (0.2 * epoch + 1))
         num_iterations = 7 * len(trainset)
         cur_epoch_num_iterations = int(num_iterations * (0.2 * epoch + 1))
 
@@ -312,16 +310,18 @@ def train(net_path=None):
         for i in tqdm(range(cur_epoch_num_iterations)):  # run each epoch one more time than the last one
             data = trainset[i % len(trainset)]
             inputs, labels = data[0].to(device), data[1].to(device)
+            inputs = inputs.permute(0, 3, 1, 2)
+            inputs = normalize_image(inputs, -1, 1)
             # zero the parameter gradients
             optimizer.zero_grad()
 
             # get net output
-            outputs, close_to_eye_matrices, translation_values = net(torch.cat([inputs, canonical], dim=1))
+            outputs, close_to_eye_matrices, translation_values = net(torch.cat([inputs, canonical], dim=2))
 
             # separate inputs outputs to colors and alpha
-            inputs_alpha = inputs.permute(0, 3, 1, 2)[:, 3, :, :]
+            inputs_alpha = inputs[:, 3, :, :]
             outputs_alpha = outputs[:, 3, :, :]
-            inputs = inputs.permute(0, 3, 1, 2)[:, :3, :, :]
+            inputs = inputs[:, :3, :, :]
             outputs = outputs[:, :3, :, :]
 
             # calc loss
@@ -370,7 +370,8 @@ def create_canonical(character):
         -1,
         character.image_size,
         4).to(device)
-    return canonical
+    canonical = canonical.permute(0, 3, 1, 2)
+    return normalize_image(canonical, -1, 1)
 
 
 def create_folders():
@@ -408,10 +409,11 @@ def save_losses_graphs(colors, epoch, iterations, kernel_sizes, losses, path):
 def save_inspection_image(canonical, epoch, i, inspection_path, net, kernel_sizes, gaussian, grad_gaussian):
     # parse inputs and outputs
     inspection_input = trainset[0][0].to(device)
-    inspection_output = net(torch.cat([inspection_input, canonical], dim=1))[0]
-    inspection_input_alpha = inspection_input.permute(0, 3, 1, 2)[:, 3, :, :]
+    inspection_input = inspection_input.permute(0, 3, 1, 2)
+    inspection_output = net(torch.cat([inspection_input, canonical], dim=2))[0]
+    inspection_input_alpha = inspection_input[:, 3, :, :]
     inspection_output_alpha = inspection_output[:, 3, :, :]
-    inspection_input = inspection_input.permute(0, 3, 1, 2)[:, :3, :, :]
+    inspection_input = inspection_input[:, :3, :, :]
     inspection_output = inspection_output[:, :3, :, :]
 
     # calc gaussian loss image
@@ -433,7 +435,21 @@ def save_inspection_image(canonical, epoch, i, inspection_path, net, kernel_size
 
 
 def normalize_image(image, a, b):
-    image = (image - torch.min(image)) * ((b - a) / (torch.max(image) - torch.min(image))) + a
+    """
+
+    :param image: a 4d-tensor with shape (batch_num, colors, width, height)
+    :param a: new minimum value
+    :param b: new maximum value
+    :return:
+    """
+    if image.shape[1] == 4:
+        alpha = image[:, 3, :, :].unsqueeze(1)
+        alpha = (alpha - torch.min(alpha)) * ((b - a) / (torch.max(alpha) - torch.min(alpha))) + a
+        image = image[:, :3, :, :]
+        image = (image - torch.min(image)) * ((b - a) / (torch.max(image) - torch.min(image))) + a
+        image = torch.cat([image, alpha], dim=1)
+    else:
+        image = (image - torch.min(image)) * ((b - a) / (torch.max(image) - torch.min(image))) + a
     return image
 
 
@@ -561,9 +577,10 @@ def test(net, path):
     with torch.no_grad():
         data = testset[0]
         images, labels = data[0].to(device), data[1].to(device)
+        images = images.permute(0, 3, 1, 2)
         print(labels)
-        outputs, _, _ = net(torch.cat([images, canonical], dim=1))
-        images = images.view(-1, net.character.image_size, net.character.image_size, 4)
+        outputs, _, _ = net(torch.cat([images, canonical], dim=2))
+        images = images.permute(0, 2, 3, 1)
         image = (torch.cat([images[i] for i in range(batch_size)], dim=1))
         output = (torch.cat([outputs[i] for i in range(batch_size)], dim=2)).permute(1, 2, 0)
         imsave(image.cpu(), "input", path)
@@ -577,8 +594,8 @@ def test(net, path):
 
 
 def main():
-    # path = ImageGenerator.PATH + 'Plots\\' + '11-08-2021 16-56-12 (Good 15 range)'
-    net, path = train()
+    path = ImageGenerator.PATH + 'Plots\\' + '27-08-2021 01-08-09 (Aang first 15 range)'
+    net, path = train(path)
     test(net, path)
 
 
