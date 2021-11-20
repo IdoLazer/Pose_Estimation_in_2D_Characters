@@ -1,15 +1,11 @@
 import json
 import math
-from pathlib import Path
 
 import numpy as np
 import torch
 from PIL import Image, ImageDraw, ImageOps
 from tqdm import tqdm
-
-source_path = Path(__file__).resolve()
-source_dir = source_path.parent
-PATH = str(source_dir) + '\\'
+from Config import config
 
 
 class Vector2D:
@@ -49,9 +45,6 @@ class Vector2D:
 
 images = dict()
 
-# sample_params = [5, 14, -29, -16, 22, -10, -22, 14, -21, -26, -21]
-sample_params = [5, 14, -29, -16, 22, -10, -22, 14, -21, -26, -21]
-
 
 class Character:
     image_size: int  # height in pixels of character image (each layer should be the same size and have height = width)
@@ -66,36 +59,35 @@ class Character:
 
     def __init__(self, path=None):
         if path is not None:
-            char = json.load(open(path, 'r'))
-            self.image_size = char['image_size']
-            self.path = char['path']
-            self.char_tree = char['char_tree']
-            self.layers_info = char['layers_info']
+            char_conf = json.load(open(path, 'r'))
+            self.image_size = char_conf['image_size']
+            self.path = char_conf['path']
+            self.char_tree = char_conf['char_tree']
+            self.layers_info = char_conf['layers_info']
             for key in self.layers_info:
                 item = self.layers_info[key]
                 item['displacement'] = Vector2D(item['displacement'][0], item['displacement'][1])
-            self.char_tree_array = char['char_tree_array']
-            self.sample_params = char['sample_params']
-            self.drawing_order = char['drawing_order']
-            self.parents = char['parents']
-            self.canonical_bias_dict = char['canonical_bias_dict']
-
+            self.char_tree_array = char_conf['char_tree_array']
+            self.sample_params = char_conf['sample_params']
+            self.drawing_order = char_conf['drawing_order']
+            self.parents = char_conf['parents']
+            self.canonical_bias_dict = char_conf['canonical_bias_dict']
 
     @staticmethod
     def create_default_config_file(path, root_name, char_tree, drawing_order):
-        char = Character()
+        default_char = Character()
 
         # find image size
-        char.image_size = Image.open(path + root_name + '.png').size[0]
-        char.path = path
-        char.char_tree = char_tree
-        char.layers_info = dict()
+        default_char.image_size = Image.open(path + root_name + '.png').size[0]
+        default_char.path = path
+        default_char.char_tree = char_tree
+        default_char.layers_info = dict()
         char_tree_array = ["Root"]
         index = 0
         parents = [None]
         while index < len(char_tree_array):
             part = char_tree_array[index]
-            char.layers_info[part] = \
+            default_char.layers_info[part] = \
                 {
                     "displacement": [0, 0],
                     "name": part,
@@ -105,11 +97,11 @@ class Character:
                 char_tree_array += char_tree[part]
                 parents += [index] * len(char_tree[part])
             index += 1
-        char.char_tree_array = char_tree_array
-        char.drawing_order = drawing_order
-        char.parents = parents
-        char.sample_params = [0] * len(char.char_tree_array)
-        json.dump(char, open(char.path + 'Config.txt', 'w'), default=lambda o: o.__dict__,
+        default_char.char_tree_array = char_tree_array
+        default_char.drawing_order = drawing_order
+        default_char.parents = parents
+        default_char.sample_params = [0] * len(default_char.char_tree_array)
+        json.dump(default_char, open(default_char.path + 'Config.txt', 'w'), default=lambda o: o.__dict__,
                   sort_keys=True, indent=4)
 
 
@@ -139,6 +131,13 @@ class BodyPart:
         self.children.append(body_part)
 
 
+try:
+    char = Character(config['dirs']['source_dir'] + 'Character Layers\\' + config['dataset']['character'] +
+                     '\\Config.txt')
+except OSError:
+    print("Couldn't find config file for " + config['dataset']['character'])
+
+
 def rotate(origin, point, angle):
     """
     Rotate a point counterclockwise by a given angle around a given origin.
@@ -157,7 +156,7 @@ def translate_points(points, displacement):
     return [points[i] + displacement for i in range(len(points))]
 
 
-def create_affine_transform(angle, center, displacement, name, print_dict=False, image_size=128):
+def create_affine_transform(angle, center, displacement, name, print_dict=False):
     dx, dy = (displacement.x, -displacement.y) if print_dict else \
         (displacement.x, -displacement.y)
     cos = math.cos(angle)
@@ -246,7 +245,7 @@ def create_image(character, angles, draw_skeleton=False, omit_layers=False, prin
 def create_body_hierarchy(parameters, character):
     for i in range(len(parameters)):
         parameters[i] += character.sample_params[i]
-    # parameters = sample_params  # TODO: Always comment out when starting
+    # parameters = [5, 14, -29, -16, 22, -10, -22, 14, -21, -26, -21]  # TODO: Always comment out when starting
     parts_list = []
     for i, part in enumerate(character.char_tree_array):
         layer_info = character.layers_info[part]
@@ -256,14 +255,10 @@ def create_body_hierarchy(parameters, character):
     return parts_list[0]
 
 
-def load_data(char_name, batch_size=4, samples_num=10000, angle_range=15):
-    try:
-        char = Character(PATH + 'Character Layers\\' + char_name + '\\Config.txt')
-    except OSError:
-        print("Couldn't find config file for " + char_name)
-        return None
+def load_data(batch_size=4, samples_num=100, angle_range=15):
     num_layers = len(char.char_tree_array)
-    labels = np.random.randint(-angle_range, angle_range, size=samples_num * num_layers).reshape((samples_num, num_layers))
+    labels = np.random.randint(-angle_range, angle_range, size=samples_num * num_layers).\
+        reshape((samples_num, num_layers))
     data = []
     im_batch = []
     label_batch = []
@@ -284,14 +279,14 @@ def load_data(char_name, batch_size=4, samples_num=10000, angle_range=15):
 
     print("finished forging data")
     cutoff = int(len(data) * 0.8)
-    return data[:cutoff], data[cutoff:], char
+    return data[:cutoff], data[cutoff:]
 
 
 if __name__ == "__main__":
     # char = Character()
     # json.dump(char, open(char.path + 'Config', 'w'), default=lambda o: o.__dict__,
     #         sort_keys=True, indent=4)
-    load_data('Cartman', batch_size=4, samples_num=25)
+    load_data(batch_size=4, samples_num=25, angle_range=15)
     # Character.create_default_config_file(PATH + 'Character Layers\\Default Character\\', 'Lower Torso',
     #                                      {'Root': ['Chest', 'Upper Left Leg', 'Upper Right Leg'],
     #                                       'Chest': ['Head', 'Left Shoulder', 'Right Shoulder'],
@@ -312,8 +307,7 @@ if __name__ == "__main__":
     #                                       "Right Shoulder",
     #                                       "Right Arm"])
     #
-    # char = Character(PATH + 'Character Layers\\Aang\\Config.txt')
+    # char = Character(PATH + 'Character Layers\\Aang2\\Config.txt')
     # angles = char.sample_params
-    # im = create_image(char, angles, draw_skeleton=True, print_dict=False, as_image=True)
-    # im.show()
-#
+    # im = create_image(char, angles, draw_skeleton=False, print_dict=False, as_image=True)
+    # im.save(PATH + 'Character Layers\\Output.png')
