@@ -5,34 +5,36 @@ config = \
         'dirs':
             {
                 'source_dir': str(Path(__file__).resolve().parent) + '\\',
+                'comment': '(Aang2 10 range with parameters)'
             },
 
         'dataset':
             {
                 'character': 'Aang2',
                 'batch_size': 4,
-                'samples_num': 10800,
-                'angle_range': 25,
+                'samples_num': 5000,
+                'angle_range': 45,
             },
 
         'training':
             {
                 'lr': 0.001,
-                'epochs': 30,
-                'kernel_sizes': [51, 35, 25, 17, 13, 9, 7, 5, 3],
-                'lambda': 0.005,
-                'alpha': 0.05,
-                'base_model': '17-11-2021 16-25-13 (Aang2 25 range)',
+                'epochs': 50,
+                'kernel_sizes': [55, 39, 27, 19, 13, 9, 7, 5, 3],
+                'grad_kernel_sizes': [13, 11, 9, 7, 5],
+                'lambda': 0.0001,
+                'alpha': 0.1,
+                'base_model': None,
             },
 
         'inspection':
             {
-                'num_iter_to_print': 50,
+                'num_iter_to_print': 100,
             },
 
         'network':
             {
-                'weight_scaling': 0.5,
+                'weight_scaling': 0.7,
             },
 
     }

@@ -106,7 +106,7 @@ class Character:
 
 
 class BodyPart:
-    def __init__(self, parent, name, path, dist_from_parent, inner_rotation):
+    def __init__(self, parent, name, path, dist_from_parent, parameters):
         self.parent = parent
         self.name = name
         if name not in images and path is not None:
@@ -114,17 +114,19 @@ class BodyPart:
             images[name] = self.im
         elif path is not None:
             self.im = images[name]
+        inner_rotation, x_scaling, y_scaling, x_translate, y_translate = parameters
         joint_rotation = math.radians(0)
-        center = Vector2D()
+        center = Vector2D() + Vector2D(x_translate, y_translate)
         if parent is not None:
             parent.__add_child(self)
             joint_rotation = parent.rotation
-            center = parent.position
+            center = parent.position + Vector2D(x_translate, y_translate)
         # create_affine_transform(math.radians(inner_rotation), Vector2D(), dist_from_parent,
         #                         name, True, self.im.size[0])  # TODO: This is just to generate initial transformations
         self.position = rotate(center, center + dist_from_parent, -joint_rotation)
         self.center = center
         self.rotation = joint_rotation + math.radians(inner_rotation)
+        self.scaling = Vector2D(x_scaling, y_scaling)
         self.children = []
 
     def __add_child(self, body_part):
@@ -156,7 +158,7 @@ def translate_points(points, displacement):
     return [points[i] + displacement for i in range(len(points))]
 
 
-def create_affine_transform(angle, center, displacement, name, print_dict=False):
+def create_affine_transform(angle, center, displacement, scaling, name, print_dict=False):
     dx, dy = (displacement.x, -displacement.y) if print_dict else \
         (displacement.x, -displacement.y)
     cos = math.cos(angle)
@@ -182,10 +184,31 @@ def traverse_tree(cur, size, layers, draw_skeleton, skeleton_draw, transform=Tru
     image_center = Vector2D(size / 2, size / 2)
     im = cur.im
     if transform:
-        im = im.transform((size, size),
+        # Scale layer according to scaling parameter
+        im = im.resize((int(size * cur.scaling.x), int(size * cur.scaling.y)), resample=Image.BILINEAR)
+        if cur.scaling.x < 1:
+            left = 0
+            right = int(size * cur.scaling.x)
+        else:
+            left = (int(size * cur.scaling.x) / 2) - (size / 2)
+            right = (int(size * cur.scaling.x) / 2) + (size / 2)
+        if cur.scaling.y < 1:
+            top = 0
+            down = int(size * cur.scaling.y)
+        else:
+            top = (int(size * cur.scaling.y) / 2) - (size / 2)
+            down = (int(size * cur.scaling.y) / 2) + (size / 2)
+        im = im.crop((left, top, right, down))
+        img_w, img_h = im.size
+        background = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+        bg_w, bg_h = background.size
+        offset = ((bg_w - img_w) // 2, (bg_h - img_h) // 2)
+        background.paste(im, offset)
+        # transform scaled layer according to other parameters
+        im = background.transform((size, size),
                           Image.AFFINE,
-                          data=create_affine_transform(cur.rotation, image_center, cur.position, cur.name, print_dict).
-                          flatten()[:6],
+                          data=create_affine_transform(cur.rotation, image_center, cur.position, cur.scaling, cur.name,
+                                                       print_dict).flatten()[:6],
                           resample=Image.BILINEAR)
     for child in cur.children:
         if draw_skeleton:
@@ -208,8 +231,8 @@ def traverse_tree(cur, size, layers, draw_skeleton, skeleton_draw, transform=Tru
     layers[cur.name] = im
 
 
-def generate_layers(character, angles, draw_skeleton=False, as_tensor=False, transform=True, print_dict=False):
-    origin = create_body_hierarchy(angles, character)
+def generate_layers(character, parameters, draw_skeleton=False, as_tensor=False, transform=True, print_dict=False):
+    origin = create_body_hierarchy(parameters, character)
     layers = {}
     skeleton = Image.new('RGBA', (character.image_size, character.image_size))
     skeleton_draw = ImageDraw.Draw(skeleton)
@@ -229,9 +252,9 @@ def generate_layers(character, angles, draw_skeleton=False, as_tensor=False, tra
     return torch.tensor(np.array(layers_list, dtype='float64'))
 
 
-def create_image(character, angles, draw_skeleton=False, omit_layers=False, print_dict=False, as_image=False):
+def create_image(character, parameters, draw_skeleton=False, omit_layers=False, print_dict=False, as_image=False):
     drawing_order = character.drawing_order + ['Skeleton']
-    layers = generate_layers(character, angles, draw_skeleton, print_dict=print_dict)
+    layers = generate_layers(character, parameters, draw_skeleton, print_dict=print_dict)
     im_size = character.image_size
     im = Image.new("RGBA", (im_size, im_size))
     for part in drawing_order:
@@ -243,9 +266,15 @@ def create_image(character, angles, draw_skeleton=False, omit_layers=False, prin
 
 
 def create_body_hierarchy(parameters, character):
-    for i in range(len(parameters)):
-        parameters[i] += character.sample_params[i]
-    # parameters = [5, 14, -29, -16, 22, -10, -22, 14, -21, -26, -21]  # TODO: Always comment out when starting
+    if parameters is not None:
+        angles = parameters[0]
+        for i in range(len(angles)):
+            angles[i] += character.sample_params[i]
+        parameters = parameters.transpose()
+    else:
+        parameters = np.array([0, 0, 0, 1, 1] * len(character.char_tree_array)).\
+            reshape((len(character.char_tree_array), 5))
+    # angles = [5, 14, -29, -16, 22, -10, -22, 14, -21, -26, -21]  # TODO: Always comment out when starting
     parts_list = []
     for i, part in enumerate(character.char_tree_array):
         layer_info = character.layers_info[part]
@@ -255,21 +284,36 @@ def create_body_hierarchy(parameters, character):
     return parts_list[0]
 
 
+def generate_parameters(angle_range, num_layers, samples_num):
+    angles = np.random.randint(-angle_range, angle_range, size=samples_num * num_layers). \
+        reshape((samples_num, 1, num_layers))
+    x_scaling = np.random.uniform(0.8, 1.2, size=samples_num * num_layers). \
+        reshape((samples_num, 1, num_layers))
+    y_scaling = np.random.uniform(0.8, 1.2, size=samples_num * num_layers). \
+        reshape((samples_num, 1, num_layers))
+    x_translate = np.random.randint(-1, 1, size=samples_num * num_layers). \
+        reshape((samples_num, 1, num_layers))
+    y_translate = np.random.randint(-1, 1, size=samples_num * num_layers). \
+        reshape((samples_num, 1, num_layers))
+    parameters = np.concatenate((angles, x_scaling, y_scaling, x_translate, y_translate), axis=1)
+    return parameters
+
+
 def load_data(batch_size=4, samples_num=100, angle_range=15):
     num_layers = len(char.char_tree_array)
-    labels = np.random.randint(-angle_range, angle_range, size=samples_num * num_layers).\
-        reshape((samples_num, num_layers))
+    labels = generate_parameters(angle_range, num_layers, samples_num)
+
     data = []
     im_batch = []
     label_batch = []
     i = 1
     for index in tqdm(range(len(labels))):
-        angles = labels[index]
-        im = create_image(char, angles, draw_skeleton=False,
+        parameters = labels[index]
+        im = create_image(char, parameters, draw_skeleton=False,
                           print_dict=False, as_image=False)
         im = (im - 127.5) / 127.5
         im_batch.append(im)
-        label_batch.append(angles)
+        label_batch.append(parameters)
         if i % batch_size == 0:
             data.append((torch.tensor(np.array(im_batch, dtype='float64')),
                          torch.tensor(np.array(label_batch, dtype='float64'))))
@@ -307,7 +351,7 @@ if __name__ == "__main__":
     #                                       "Right Shoulder",
     #                                       "Right Arm"])
     #
-    # char = Character(PATH + 'Character Layers\\Aang2\\Config.txt')
-    # angles = char.sample_params
-    # im = create_image(char, angles, draw_skeleton=False, print_dict=False, as_image=True)
-    # im.save(PATH + 'Character Layers\\Output.png')
+    # char = Character(config['dirs']['source_dir'] + 'Character Layers\\Aang2\\Config.txt')
+    # parameters = generate_parameters(45, len(char.char_tree_array), 1)
+    # im = create_image(char, parameters[0], draw_skeleton=False, print_dict=False, as_image=True)
+    # im.show()

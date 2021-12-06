@@ -77,8 +77,8 @@ class Net(nn.Module):
         self.conv4 = nn.Conv2d(32, 64, 3)
         self.fc1 = nn.Linear(64 * (((((((character.image_size - 2) - 2) // 2) - 2) // 2) - 2) // 2) *
                              (((((((character.image_size - 2) - 2) // 2) - 2) // 2) - 2) // 2), 512)
-        self.fc2 = nn.Linear(512, 3 * self.num_layers)
-        self.fc3 = nn.Linear(3 * self.num_layers, 6 * self.num_layers)
+        self.fc2 = nn.Linear(512, 5 * self.num_layers)
+        self.fc3 = nn.Linear(5 * self.num_layers, 6 * self.num_layers)
         self.fc4 = nn.Linear(6 * self.num_layers, 6 * self.num_layers)
         torch.nn.init.xavier_uniform_(self.conv1.weight, config['network']['weight_scaling'])
         torch.nn.init.xavier_uniform_(self.conv2.weight, config['network']['weight_scaling'])
@@ -205,17 +205,18 @@ def train():
     canonical = create_canonical(ImageGenerator.char)
     optimizer = optim.Adam(net.parameters(), lr=training_conf['lr'])
     kernel_sizes = training_conf['kernel_sizes']
+    grad_kernel_sizes = training_conf['grad_kernel_sizes']
     num_iter_to_print = config['inspection']['num_iter_to_print']
     kernel_index = 0
     gaussian = kornia.filters.GaussianBlur2d((kernel_sizes[kernel_index], kernel_sizes[kernel_index]),
                                              (18, 18), 'replicate')
-    running_losses = [0.0, 0.0, 0.0, 0.0]
+    grad_gaussian = kornia.filters.GaussianBlur2d((grad_kernel_sizes[kernel_index],
+                                                  grad_kernel_sizes[kernel_index]), (5, 5), 'replicate')
+    running_losses = [[], [], [], []]
     losses_arrays = [[], [], [], []]
     iterations = []
     test_losses = []
     for epoch in range(training_conf['epochs']):  # loop over the dataset multiple times
-        grad_gaussian = kornia.filters.GaussianBlur2d((11, 11), (6, 6), 'replicate') if epoch < len(kernel_sizes) // 2 \
-            else kornia.filters.GaussianBlur2d((5, 5), (3, 3), 'replicate')
 
         for i in tqdm(range(len(trainset))):
             if int(float((i + (epoch * len(trainset))) / float(training_conf['epochs']
@@ -225,9 +226,13 @@ def train():
                                                                                * (len(trainset)) / len(kernel_sizes))))
                 gaussian = kornia.filters.GaussianBlur2d((kernel_sizes[kernel_index], kernel_sizes[kernel_index]),
                                                          (18, 18), 'replicate')
-                running_losses = [0.0, 0.0, 0.0, 0.0]
+                if kernel_index < len(grad_kernel_sizes):
+                    grad_gaussian = kornia.filters.GaussianBlur2d((grad_kernel_sizes[kernel_index],
+                                                                  grad_kernel_sizes[kernel_index]), (5, 5), 'replicate')
+                running_losses = [[], [], [], []]
                 losses_arrays = [[], [], [], []]
                 iterations = []
+                optimizer = optim.Adam(net.parameters(), lr=training_conf['lr'])
             data = trainset[i]
             inputs, labels = data[0].to(device), data[1].to(device)
             inputs = inputs.permute(0, 3, 1, 2)
@@ -253,10 +258,10 @@ def train():
             losses[0].backward()
             optimizer.step()
 
-            running_losses[0] += losses[0].item()
-            running_losses[1] += losses[1].item()
-            running_losses[2] += losses[2].item()
-            running_losses[3] += losses[3].item()
+            running_losses[0] += [losses[0].item()]
+            running_losses[1] += [losses[1].item()]
+            running_losses[2] += [losses[2].item()]
+            running_losses[3] += [losses[3].item()]
 
             if i == 0 or i == len(trainset) - 1:
                 with torch.no_grad():
@@ -265,11 +270,14 @@ def train():
                                           gaussian, grad_gaussian)
             if i % num_iter_to_print == (
                     config['inspection']['num_iter_to_print']) - 1:
-                append_losses(alpha_modified, epoch, i, iterations, losses_arrays, num_iter_to_print, running_losses)
-                running_losses = [0.0, 0.0, 0.0, 0.0]
-                with torch.no_grad():
-                    save_inspection_image(canonical, epoch, i, inspection_path, net, kernel_sizes[kernel_index],
-                                          gaussian, grad_gaussian)
+                if len(running_losses[0]) < num_iter_to_print:
+                    running_losses = [[], [], [], []]
+                else:
+                    append_losses(alpha_modified, epoch, i, iterations, losses_arrays, num_iter_to_print, running_losses)
+                    running_losses = [[], [], [], []]
+                    with torch.no_grad():
+                        save_inspection_image(canonical, epoch, i, inspection_path, net, kernel_sizes[kernel_index],
+                                              gaussian, grad_gaussian)
 
         test_loss = test(net, path)
         print("test loss epoch %d = %.9f" % (epoch + 1, test_loss))
@@ -294,8 +302,7 @@ def create_net(net_path, batch=config['dataset']['batch_size']):
 
 
 def create_canonical(character, batch=config['dataset']['batch_size']):
-    num_layers = len(character.char_tree_array)
-    canonical = ImageGenerator.generate_layers(character, [0] * num_layers, as_tensor=True, transform=False)
+    canonical = ImageGenerator.generate_layers(character, None, as_tensor=True, transform=False)
     canonical = torch.cat(batch * [canonical]).reshape(
         batch,
         -1,
@@ -308,6 +315,8 @@ def create_canonical(character, batch=config['dataset']['batch_size']):
 def create_folders(net):
     current_time = datetime.now()
     path = config['dirs']['source_dir'] + 'Plots\\' + current_time.strftime("%d-%m-%Y %H-%M-%S")
+    if config['dirs']['comment'] is not None:
+        path += ' ' + config['dirs']['comment']
     inspection_path = path + '\\inspection'
     try:
         os.mkdir(path)
@@ -393,18 +402,18 @@ def normalize_image(image, a, b):
 
 
 def append_losses(alpha_modified, epoch, i, iterations, losses, num_iter_to_print, running_losses):
-    losses[0].append(running_losses[0] / num_iter_to_print)
+    losses[0].append(np.sum(running_losses[0]) / num_iter_to_print)
     losses[1].append(((1 - config['training']['lambda'])
-                      * (1 - alpha_modified)) * running_losses[1] / num_iter_to_print)
-    losses[2].append(((1 - config['training']['lambda']) * alpha_modified) * running_losses[2] / num_iter_to_print)
-    losses[3].append(config['training']['lambda'] * running_losses[3] / num_iter_to_print)
+                      * (1 - alpha_modified)) * np.sum(running_losses[1]) / num_iter_to_print)
+    losses[2].append(((1 - config['training']['lambda']) * alpha_modified) * np.sum(running_losses[2]) / num_iter_to_print)
+    losses[3].append(config['training']['lambda'] * np.sum(running_losses[3]) / num_iter_to_print)
     iterations.append(epoch * len(trainset) + i + 1)
     print(
         '[%d, %5d] loss: %.9f, gaussian loss: %.9f, depth loss: %.9f, orthogonal loss: %.9f, alpha modified: %.9f' %
-        (epoch + 1, i + 1, running_losses[0] / num_iter_to_print,
-         ((1 - config['training']['lambda']) * (1 - alpha_modified)) * running_losses[1] / num_iter_to_print,
-         ((1 - config['training']['lambda']) * alpha_modified) * running_losses[2] / num_iter_to_print,
-         config['training']['lambda'] * running_losses[3] / num_iter_to_print,
+        (epoch + 1, i + 1, np.sum(running_losses[0]) / num_iter_to_print,
+         ((1 - config['training']['lambda']) * (1 - alpha_modified)) * np.sum(running_losses[1]) / num_iter_to_print,
+         ((1 - config['training']['lambda']) * alpha_modified) * np.sum(running_losses[2]) / num_iter_to_print,
+         config['training']['lambda'] * np.sum(running_losses[3]) / num_iter_to_print,
          alpha_modified))
 
 
@@ -528,6 +537,8 @@ def showcase(net, path):
 def main():
     net, path = train()
     showcase(net, path)
+    from TestModule import test_frames
+    test_frames(path.split('\\')[-1])
 
 
 if __name__ == '__main__':
