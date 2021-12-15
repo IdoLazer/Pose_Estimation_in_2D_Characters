@@ -34,7 +34,7 @@ def test_frames(base_model=None):
                 im = im.to(TorchLearner.device)
                 im = im.permute(0, 3, 1, 2)
                 im = TorchLearner.normalize_image(im, -1, 1)
-                outputs, _, _ = net(torch.cat([im, canonical], dim=2))
+                outputs, _, _, _ = net(torch.cat([im, canonical], dim=2))
                 im = im.permute(0, 2, 3, 1)
                 image = (torch.cat([im[i] for i in range(1)], dim=1))
                 output = (torch.cat([outputs[i] for i in range(1)], dim=2)).permute(1, 2, 0)

@@ -158,12 +158,13 @@ def translate_points(points, displacement):
     return [points[i] + displacement for i in range(len(points))]
 
 
-def create_affine_transform(angle, center, displacement, scaling, name, print_dict=False):
+def create_affine_transform(angle, center, displacement, scaling, name, print_dict=False, for_label=False,
+                            im_size=None):
     dx, dy = (displacement.x, -displacement.y) if print_dict else \
         (displacement.x, -displacement.y)
     cos = math.cos(angle)
     sin = math.sin(angle)
-    x, y = (0, 0) if print_dict else (center.x, center.y)
+    x, y = (0, 0) if (print_dict or for_label) else (center.x, center.y)
     nx, ny = x + dx, y + dy
     a = cos / 1
     b = sin / 1
@@ -174,13 +175,15 @@ def create_affine_transform(angle, center, displacement, scaling, name, print_di
     if print_dict:
         bias = [a, b, c, d, e, f]
         print('\"' + name + '\" : ' + str(bias) + ',')
+    if for_label and im_size is not None:
+        return [a, b, c / (im_size / 2), d, e, f / (im_size / 2)]
     return np.array([
         [a, b, c],
         [d, e, f],
         [0, 0, 1]])
 
 
-def traverse_tree(cur, size, layers, draw_skeleton, skeleton_draw, transform=True, print_dict=False):
+def traverse_tree(cur, size, layers, matrices, draw_skeleton, skeleton_draw, transform=True, print_dict=False):
     image_center = Vector2D(size / 2, size / 2)
     im = cur.im
     if transform:
@@ -205,6 +208,9 @@ def traverse_tree(cur, size, layers, draw_skeleton, skeleton_draw, transform=Tru
         offset = ((bg_w - img_w) // 2, (bg_h - img_h) // 2)
         background.paste(im, offset)
         # transform scaled layer according to other parameters
+        transform_matrix = create_affine_transform(cur.rotation, image_center, cur.position, cur.scaling, cur.name,
+                                                   for_label=True, im_size=size)
+        matrices[cur.name] = transform_matrix
         im = background.transform((size, size),
                           Image.AFFINE,
                           data=create_affine_transform(cur.rotation, image_center, cur.position, cur.scaling, cur.name,
@@ -218,7 +224,7 @@ def traverse_tree(cur, size, layers, draw_skeleton, skeleton_draw, transform=Tru
                 fill="red")
             skeleton_draw.line([(line[0].x, size - line[0].y),
                                 (line[1].x, size - line[1].y)], fill="yellow")
-        traverse_tree(child, size, layers, draw_skeleton, skeleton_draw, transform, print_dict)
+        traverse_tree(child, size, layers, matrices, draw_skeleton, skeleton_draw, transform, print_dict)
     if not cur.children and draw_skeleton:
         if cur.name == 'Head':
             line = translate_points([cur.position, rotate(cur.position, cur.position + Vector2D(0, 15), -cur.rotation)],
@@ -234,14 +240,20 @@ def traverse_tree(cur, size, layers, draw_skeleton, skeleton_draw, transform=Tru
 def generate_layers(character, parameters, draw_skeleton=False, as_tensor=False, transform=True, print_dict=False):
     origin = create_body_hierarchy(parameters, character)
     layers = {}
+    matrices = {}
     skeleton = Image.new('RGBA', (character.image_size, character.image_size))
     skeleton_draw = ImageDraw.Draw(skeleton)
-    traverse_tree(origin, character.image_size, layers, draw_skeleton, skeleton_draw, transform, print_dict)
+    traverse_tree(origin, character.image_size, layers, matrices, draw_skeleton, skeleton_draw, transform, print_dict)
     if not as_tensor:
         layers['Skeleton'] = skeleton
-        return layers
+        return layers, matrices
     layers_list = []
+    matrix_list = []
     for part in character.char_tree_array:
+
+        transform_matrix = matrices.get(part, [[1, 0, 0], [0, 1, 0]])
+        matrix_list.append(transform_matrix)
+
         im = Image.new("RGBA", (character.image_size, character.image_size))
         alpha = ImageOps.invert(layers[part].split()[-1])
         layer = Image.composite(im, layers[part], alpha)
@@ -249,20 +261,25 @@ def generate_layers(character, parameters, draw_skeleton=False, as_tensor=False,
         layer = np.array(layer)
         layer = (layer - 127.5) / 127.5
         layers_list.append(layer)
-    return torch.tensor(np.array(layers_list, dtype='float64'))
+    return torch.tensor(np.array(layers_list, dtype='float64')), torch.tensor(np.array(matrix_list, dtype='float64'))
 
 
 def create_image(character, parameters, draw_skeleton=False, omit_layers=False, print_dict=False, as_image=False):
     drawing_order = character.drawing_order + ['Skeleton']
-    layers = generate_layers(character, parameters, draw_skeleton, print_dict=print_dict)
+    layers, transformations = generate_layers(character, parameters, draw_skeleton, print_dict=print_dict)
     im_size = character.image_size
     im = Image.new("RGBA", (im_size, im_size))
+    matrix_list = []
+    for part in character.char_tree_array:
+        transform_matrix = transformations.get(part, np.array([1, 0, 0, 0, 1, 0]))
+        matrix_list.append(transform_matrix)
+
     for part in drawing_order:
         if omit_layers and part != 'Right Arm':
             continue
         alpha = ImageOps.invert(layers[part].split()[-1])
         im = Image.composite(im, layers[part], alpha)
-    return im.convert("RGB") if as_image else np.array(im).astype('uint8')
+    return (im.convert("RGB"), matrix_list) if as_image else (np.array(im).astype('uint8'), np.array(matrix_list))
 
 
 def create_body_hierarchy(parameters, character):
@@ -270,11 +287,11 @@ def create_body_hierarchy(parameters, character):
         angles = parameters[0]
         for i in range(len(angles)):
             angles[i] += character.sample_params[i]
+        # parameters[0] = [5, 14, -29, -16, 22, -10, -22, 14, -21, -26]  # TODO: Always comment out when starting
         parameters = parameters.transpose()
     else:
         parameters = np.array([0, 0, 0, 1, 1] * len(character.char_tree_array)).\
             reshape((len(character.char_tree_array), 5))
-    # angles = [5, 14, -29, -16, 22, -10, -22, 14, -21, -26, -21]  # TODO: Always comment out when starting
     parts_list = []
     for i, part in enumerate(character.char_tree_array):
         layer_info = character.layers_info[part]
@@ -295,7 +312,7 @@ def generate_parameters(angle_range, num_layers, samples_num):
         reshape((samples_num, 1, num_layers))
     y_translate = np.random.randint(-1, 1, size=samples_num * num_layers). \
         reshape((samples_num, 1, num_layers))
-    parameters = np.concatenate((angles, x_scaling, y_scaling, x_translate, y_translate), axis=1)
+    parameters = np.concatenate((angles, x_scaling / x_scaling, y_scaling / y_scaling, x_translate * 0, y_translate * 0), axis=1)
     return parameters
 
 
@@ -309,11 +326,11 @@ def load_data(batch_size=4, samples_num=100, angle_range=15):
     i = 1
     for index in tqdm(range(len(labels))):
         parameters = labels[index]
-        im = create_image(char, parameters, draw_skeleton=False,
+        im, matrices = create_image(char, parameters, draw_skeleton=False,
                           print_dict=False, as_image=False)
         im = (im - 127.5) / 127.5
         im_batch.append(im)
-        label_batch.append(parameters)
+        label_batch.append(matrices)
         if i % batch_size == 0:
             data.append((torch.tensor(np.array(im_batch, dtype='float64')),
                          torch.tensor(np.array(label_batch, dtype='float64'))))

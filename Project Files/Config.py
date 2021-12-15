@@ -5,7 +5,7 @@ config = \
         'dirs':
             {
                 'source_dir': str(Path(__file__).resolve().parent) + '\\',
-                'comment': '(Aang2 10 range with parameters)'
+                'comment': 'Aang2 25 range with supervised loss'
             },
 
         'dataset':
@@ -13,15 +13,16 @@ config = \
                 'character': 'Aang2',
                 'batch_size': 4,
                 'samples_num': 5000,
-                'angle_range': 45,
+                'angle_range': 25,
             },
 
         'training':
             {
-                'lr': 0.001,
-                'epochs': 50,
-                'kernel_sizes': [55, 39, 27, 19, 13, 9, 7, 5, 3],
+                'lr': 0.0001,
+                'epochs': 15,
+                'kernel_sizes': [27, 19, 13, 9, 7, 5, 3],
                 'grad_kernel_sizes': [13, 11, 9, 7, 5],
+                'supervised_loss': 0.8,
                 'lambda': 0.0001,
                 'alpha': 0.1,
                 'base_model': None,
@@ -29,12 +30,12 @@ config = \
 
         'inspection':
             {
-                'num_iter_to_print': 100,
+                'num_iter_to_print': 80,
             },
 
         'network':
             {
-                'weight_scaling': 0.7,
+                'weight_scaling': 0.3,
             },
 
     }

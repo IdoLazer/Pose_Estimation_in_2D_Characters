@@ -115,10 +115,11 @@ class Net(nn.Module):
         close_to_eye_matrices = []
         translation_values = []
         part_layers = []
+        part_transforms = []
         part_layers_dict = dict()
         affine_matrix_last_row = torch.tensor(self.batch * [0, 0, 1]).view(-1, 1, 3).to(device)
         for i, part in enumerate(self.character.char_tree_array):
-            part_transform = affine_transforms[:, i * 6: (i * 6) + 6].view(-1, 2, 3).to(device)
+            part_transform = affine_transforms[:, i * 6: (i * 6) + 6].view(-1, 2, 3)
             part_transform[:, 0, 2] /= (self.character.image_size / 2)
             part_transform[:, 1, 2] /= (self.character.image_size / 2)
             rotation_scaling_matrix = part_transform[:, :, 0: 2]
@@ -136,6 +137,7 @@ class Net(nn.Module):
             part_grid = F.affine_grid(part_transform, x[i + 1].size(), align_corners=False)
             part_layer = F.grid_sample(x[i + 1], part_grid, align_corners=False, padding_mode='border')
             part_layers.append(part_layer)
+            part_transforms.append(torch.unsqueeze(torch.flatten(part_transform, start_dim=1), dim=0))
             part_layers_dict[part] = i
 
         stack = None
@@ -159,7 +161,7 @@ class Net(nn.Module):
 
         # imshow(stack[0].cpu().view(4, 128, 128).permute(1, 2, 0), '')
         # imshow(x[0][0].cpu().view(4, 128, 128).permute(1, 2, 0), '')
-        return stack, close_to_eye_matrices, translation_values
+        return stack, close_to_eye_matrices, translation_values, torch.transpose(torch.cat(part_transforms), 0, 1)
 
     def forward(self, x):
         x = list(torch.split(x, int(x.shape[2] / (self.num_layers + 1)), dim=2))
@@ -212,8 +214,8 @@ def train():
                                              (18, 18), 'replicate')
     grad_gaussian = kornia.filters.GaussianBlur2d((grad_kernel_sizes[kernel_index],
                                                   grad_kernel_sizes[kernel_index]), (5, 5), 'replicate')
-    running_losses = [[], [], [], []]
-    losses_arrays = [[], [], [], []]
+    running_losses = [[], [], [], [], []]
+    losses_arrays = [[], [], [], [], []]
     iterations = []
     test_losses = []
     for epoch in range(training_conf['epochs']):  # loop over the dataset multiple times
@@ -229,8 +231,8 @@ def train():
                 if kernel_index < len(grad_kernel_sizes):
                     grad_gaussian = kornia.filters.GaussianBlur2d((grad_kernel_sizes[kernel_index],
                                                                   grad_kernel_sizes[kernel_index]), (5, 5), 'replicate')
-                running_losses = [[], [], [], []]
-                losses_arrays = [[], [], [], []]
+                running_losses = [[], [], [], [], []]
+                losses_arrays = [[], [], [], [], []]
                 iterations = []
                 optimizer = optim.Adam(net.parameters(), lr=training_conf['lr'])
             data = trainset[i]
@@ -241,7 +243,7 @@ def train():
             optimizer.zero_grad()
 
             # get net output
-            outputs, close_to_eye_matrices, translation_values = net(torch.cat([inputs, canonical], dim=2))
+            outputs, close_to_eye_matrices, translation_values, transforms = net(torch.cat([inputs, canonical], dim=2))
 
             # separate inputs outputs to colors and alpha
             inputs_alpha = inputs[:, 3, :, :]
@@ -254,7 +256,7 @@ def train():
             # * (i / len(trainset)) * (i / len(trainset)) * (0.01 - training_conf['alpha'])
             losses = calc_losses(alpha_modified, close_to_eye_matrices, criterion, gaussian, grad_gaussian,
                                  inputs, inputs_alpha, kernel_sizes[kernel_index], outputs, outputs_alpha,
-                                 translation_values)
+                                 translation_values, labels, transforms)
             losses[0].backward()
             optimizer.step()
 
@@ -262,6 +264,7 @@ def train():
             running_losses[1] += [losses[1].item()]
             running_losses[2] += [losses[2].item()]
             running_losses[3] += [losses[3].item()]
+            running_losses[4] += [losses[4].item()]
 
             if i == 0 or i == len(trainset) - 1:
                 with torch.no_grad():
@@ -271,10 +274,11 @@ def train():
             if i % num_iter_to_print == (
                     config['inspection']['num_iter_to_print']) - 1:
                 if len(running_losses[0]) < num_iter_to_print:
-                    running_losses = [[], [], [], []]
+                    running_losses = [[], [], [], [], []]
                 else:
-                    append_losses(alpha_modified, epoch, i, iterations, losses_arrays, num_iter_to_print, running_losses)
-                    running_losses = [[], [], [], []]
+                    append_losses(alpha_modified, epoch, i, iterations, losses_arrays,
+                                  num_iter_to_print, running_losses)
+                    running_losses = [[], [], [], [], []]
                     with torch.no_grad():
                         save_inspection_image(canonical, epoch, i, inspection_path, net, kernel_sizes[kernel_index],
                                               gaussian, grad_gaussian)
@@ -302,7 +306,7 @@ def create_net(net_path, batch=config['dataset']['batch_size']):
 
 
 def create_canonical(character, batch=config['dataset']['batch_size']):
-    canonical = ImageGenerator.generate_layers(character, None, as_tensor=True, transform=False)
+    canonical, _ = ImageGenerator.generate_layers(character, None, as_tensor=True, transform=False)
     canonical = torch.cat(batch * [canonical]).reshape(
         batch,
         -1,
@@ -330,7 +334,7 @@ def create_folders(net):
 
 
 def save_losses_graphs(colors, iterations, kernel_size, losses, path):
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 10))
+    fig, ((ax1, ax2), (ax3, ax4), (ax5, _)) = plt.subplots(3, 2, figsize=(16, 10))
     fig.suptitle("Training Loss with gaussian kernel of size = %d" % kernel_size)
     ax1.plot(iterations, losses[0], color=colors[0])
     ax1.set_title('Final Loss')
@@ -344,6 +348,9 @@ def save_losses_graphs(colors, iterations, kernel_size, losses, path):
     ax4.plot(iterations, losses[3], color=colors[3])
     ax4.set_title('Orthogonal Loss')
     ax4.set(xlabel='iteration', ylabel='loss')
+    ax5.plot(iterations, losses[4], color=colors[4])
+    ax5.set_title('Supervised Loss')
+    ax5.set(xlabel='iteration', ylabel='loss')
     fig.tight_layout()
     iteration = 0 if len(iterations) == 0 else iterations[-1]
     plt.savefig(path + '\\Training Loss iter %d kernel size = %d.png' % (iteration, kernel_size))
@@ -405,8 +412,10 @@ def append_losses(alpha_modified, epoch, i, iterations, losses, num_iter_to_prin
     losses[0].append(np.sum(running_losses[0]) / num_iter_to_print)
     losses[1].append(((1 - config['training']['lambda'])
                       * (1 - alpha_modified)) * np.sum(running_losses[1]) / num_iter_to_print)
-    losses[2].append(((1 - config['training']['lambda']) * alpha_modified) * np.sum(running_losses[2]) / num_iter_to_print)
+    losses[2].append(((1 - config['training']['lambda'])
+                      * alpha_modified) * np.sum(running_losses[2]) / num_iter_to_print)
     losses[3].append(config['training']['lambda'] * np.sum(running_losses[3]) / num_iter_to_print)
+    losses[4].append(config['training']['supervised_loss'] * np.sum(running_losses[4]) / num_iter_to_print)
     iterations.append(epoch * len(trainset) + i + 1)
     print(
         '[%d, %5d] loss: %.9f, gaussian loss: %.9f, depth loss: %.9f, orthogonal loss: %.9f, alpha modified: %.9f' %
@@ -427,15 +436,22 @@ def save_batch(epoch, i, inputs, outputs, path):
 
 
 def calc_losses(alpha_modified, close_to_eye_matrices, criterion, gaussian, grad_gaussian, inputs, inputs_alpha,
-                kernel_size, outputs, outputs_alpha, translation_values):
+                kernel_size, outputs, outputs_alpha, translation_values, labels, transforms):
     orthogonal_loss = calc_orthogonal_loss(close_to_eye_matrices, criterion)
     translation_loss = calc_translation_loss(translation_values)
     depth_loss = calc_depth_loss(grad_gaussian, criterion, inputs, outputs)
     gaussian_loss = calc_gaussian_loss(criterion, gaussian, inputs, inputs_alpha, kernel_size, outputs,
                                        outputs_alpha)
-    loss = (1 - config['training']['lambda']) * (alpha_modified * depth_loss + (1 - alpha_modified) * gaussian_loss) + \
-        config['training']['lambda'] * (translation_loss + orthogonal_loss)
-    return loss, gaussian_loss, depth_loss, orthogonal_loss
+    supervised_loss = calc_supervised_loss(criterion, labels, transforms)
+    loss = config['training']['supervised_loss'] * supervised_loss # + \
+        # (1 - config['training']['supervised_loss']) * \
+        # ((1 - config['training']['lambda']) * (alpha_modified * depth_loss + (1 - alpha_modified) * gaussian_loss) +
+        #  config['training']['lambda'] * (translation_loss + orthogonal_loss))
+    return loss, gaussian_loss, depth_loss, orthogonal_loss, supervised_loss
+
+
+def calc_supervised_loss(criterion, labels, transforms):
+    return criterion(labels, transforms)
 
 
 def calc_gaussian_loss(criterion, gaussian, inputs, inputs_alpha, kernel_size, outputs, outputs_alpha):
@@ -499,7 +515,7 @@ def test(net, path):
             # zero the parameter gradients
 
             # get net output
-            outputs, close_to_eye_matrices, translation_values = net(torch.cat([inputs, canonical], dim=2))
+            outputs, close_to_eye_matrices, translation_values, transforms = net(torch.cat([inputs, canonical], dim=2))
 
             # separate inputs outputs to colors and alpha
             inputs_alpha = inputs[:, 3, :, :]
@@ -510,8 +526,9 @@ def test(net, path):
             # calc loss
             alpha_modified = config['training']['alpha']  # + (i / len(trainset))
             # * (i / len(trainset)) * (i / len(trainset)) * (0.01 - training_conf['alpha'])
-            loss, _, _, _ = calc_losses(alpha_modified, close_to_eye_matrices, criterion, gaussian, grad_gaussian,
-                                        inputs, inputs_alpha, 3, outputs, outputs_alpha, translation_values)
+            loss, _, _, _, _ = calc_losses(alpha_modified, close_to_eye_matrices, criterion, gaussian, grad_gaussian,
+                                        inputs, inputs_alpha, 3, outputs, outputs_alpha, translation_values, labels,
+                                        transforms)
             losses.append(loss)
         test_loss = np.average(loss.cpu())
         return test_loss
@@ -524,7 +541,7 @@ def showcase(net, path):
         images, labels = data[0].to(device), data[1].to(device)
         images = images.permute(0, 3, 1, 2)
         images = normalize_image(images, -1, 1)
-        outputs, _, _ = net(torch.cat([images, canonical], dim=2))
+        outputs, _, _, _ = net(torch.cat([images, canonical], dim=2))
         images = images.permute(0, 2, 3, 1)
         image = (torch.cat([images[i] for i in range(config['dataset']['batch_size'])], dim=1))
         output = (torch.cat([outputs[i] for i in range(config['dataset']['batch_size'])], dim=2)).permute(1, 2, 0)
