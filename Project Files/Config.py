@@ -5,37 +5,37 @@ config = \
         'dirs':
             {
                 'source_dir': str(Path(__file__).resolve().parent) + '\\',
-                'comment': 'Aang2 25 range with supervised loss'
+                'comment': 'Aang2 60 range refined from 45 with supervised loss + unsupervised loss'
             },
 
         'dataset':
             {
                 'character': 'Aang2',
                 'batch_size': 4,
-                'samples_num': 5000,
-                'angle_range': 25,
+                'samples_num': 10000,
+                'angle_range': 60,
             },
 
         'training':
             {
                 'lr': 0.0001,
-                'epochs': 15,
-                'kernel_sizes': [27, 19, 13, 9, 7, 5, 3],
+                'epochs': 40,
+                'kernel_sizes': [39, 27, 19, 13, 9, 7, 5, 3],
                 'grad_kernel_sizes': [13, 11, 9, 7, 5],
-                'supervised_loss': 0.8,
+                'supervised_loss': 0.5,
                 'lambda': 0.0001,
                 'alpha': 0.1,
-                'base_model': None,
+                'base_model': '15-12-2021 18-49-50 Aang2 45 range with supervised loss ONLY',
             },
 
         'inspection':
             {
-                'num_iter_to_print': 80,
+                'num_iter_to_print': 40,
             },
 
         'network':
             {
-                'weight_scaling': 0.3,
+                'weight_scaling': 0.8,
             },
 
     }

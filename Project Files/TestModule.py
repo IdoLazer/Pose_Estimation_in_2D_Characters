@@ -47,4 +47,4 @@ def test_frames(base_model=None):
 
 
 if __name__ == '__main__':
-    test_frames()
+    test_frames('15-12-2021 18-49-50 Aang2 45 range with supervised loss ONLY')

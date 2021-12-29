@@ -443,10 +443,10 @@ def calc_losses(alpha_modified, close_to_eye_matrices, criterion, gaussian, grad
     gaussian_loss = calc_gaussian_loss(criterion, gaussian, inputs, inputs_alpha, kernel_size, outputs,
                                        outputs_alpha)
     supervised_loss = calc_supervised_loss(criterion, labels, transforms)
-    loss = config['training']['supervised_loss'] * supervised_loss # + \
-        # (1 - config['training']['supervised_loss']) * \
-        # ((1 - config['training']['lambda']) * (alpha_modified * depth_loss + (1 - alpha_modified) * gaussian_loss) +
-        #  config['training']['lambda'] * (translation_loss + orthogonal_loss))
+    loss = config['training']['supervised_loss'] * supervised_loss  + \
+        (1 - config['training']['supervised_loss']) * \
+        ((1 - config['training']['lambda']) * (alpha_modified * depth_loss + (1 - alpha_modified) * gaussian_loss) +
+         config['training']['lambda'] * (translation_loss + orthogonal_loss))
     return loss, gaussian_loss, depth_loss, orthogonal_loss, supervised_loss
 
 
@@ -559,7 +559,5 @@ def main():
 
 
 if __name__ == '__main__':
-    trainset, testset = ImageGenerator.load_data(batch_size=config['dataset']['batch_size'],
-                                                 samples_num=config['dataset']['samples_num'],
-                                                 angle_range=config['dataset']['angle_range'])
+
     main()

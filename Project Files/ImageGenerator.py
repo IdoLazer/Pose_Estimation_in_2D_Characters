@@ -339,8 +339,7 @@ def load_data(batch_size=4, samples_num=100, angle_range=15):
         i += 1
 
     print("finished forging data")
-    cutoff = int(len(data) * 0.8)
-    return data[:cutoff], data[cutoff:]
+    return data
 
 
 if __name__ == "__main__":
