@@ -212,10 +212,10 @@ def traverse_tree(cur, size, layers, matrices, draw_skeleton, skeleton_draw, tra
                                                    for_label=True, im_size=size)
         matrices[cur.name] = transform_matrix
         im = background.transform((size, size),
-                          Image.AFFINE,
-                          data=create_affine_transform(cur.rotation, image_center, cur.position, cur.scaling, cur.name,
-                                                       print_dict).flatten()[:6],
-                          resample=Image.BILINEAR)
+                                  Image.AFFINE,
+                                  data=create_affine_transform(cur.rotation, image_center, cur.position,
+                                                               cur.scaling, cur.name, print_dict).flatten()[:6],
+                                  resample=Image.BILINEAR)
     for child in cur.children:
         if draw_skeleton:
             line = translate_points([cur.position, child.position], image_center)
@@ -279,7 +279,7 @@ def create_image(character, parameters, draw_skeleton=False, omit_layers=False, 
             continue
         alpha = ImageOps.invert(layers[part].split()[-1])
         im = Image.composite(im, layers[part], alpha)
-    return (im.convert("RGB"), matrix_list) if as_image else (np.array(im).astype('uint8'), np.array(matrix_list))
+    return (im, matrix_list) if as_image else (np.array(im).astype('uint8'), np.array(matrix_list))
 
 
 def create_body_hierarchy(parameters, character):
@@ -312,41 +312,35 @@ def generate_parameters(angle_range, num_layers, samples_num):
         reshape((samples_num, 1, num_layers))
     y_translate = np.random.randint(-1, 1, size=samples_num * num_layers). \
         reshape((samples_num, 1, num_layers))
-    parameters = np.concatenate((angles, x_scaling / x_scaling, y_scaling / y_scaling, x_translate * 0, y_translate * 0), axis=1)
+    parameters = np.concatenate((angles, x_scaling / x_scaling,
+                                 y_scaling / y_scaling, x_translate * 0, y_translate * 0), axis=1)
     return parameters
 
 
-def load_data(batch_size=4, samples_num=100, angle_range=15):
+def load_data(samples_num=100, angle_range=15):
     num_layers = len(char.char_tree_array)
     labels = generate_parameters(angle_range, num_layers, samples_num)
 
-    data = []
-    im_batch = []
-    label_batch = []
+    forged_images = []
+    all_matrices = []
     i = 1
     for index in tqdm(range(len(labels))):
         parameters = labels[index]
         im, matrices = create_image(char, parameters, draw_skeleton=False,
-                          print_dict=False, as_image=False)
-        im = (im - 127.5) / 127.5
-        im_batch.append(im)
-        label_batch.append(matrices)
-        if i % batch_size == 0:
-            data.append((torch.tensor(np.array(im_batch, dtype='float64')),
-                         torch.tensor(np.array(label_batch, dtype='float64'))))
-            im_batch = []
-            label_batch = []
+                                    print_dict=False, as_image=True)
+        forged_images.append(im)
+        all_matrices.append(matrices)
         i += 1
 
     print("finished forging data")
-    return data
+    return forged_images, all_matrices
 
 
 if __name__ == "__main__":
     # char = Character()
     # json.dump(char, open(char.path + 'Config', 'w'), default=lambda o: o.__dict__,
     #         sort_keys=True, indent=4)
-    load_data(batch_size=4, samples_num=25, angle_range=15)
+    load_data(samples_num=25, angle_range=15)
     # Character.create_default_config_file(PATH + 'Character Layers\\Default Character\\', 'Lower Torso',
     #                                      {'Root': ['Chest', 'Upper Left Leg', 'Upper Right Leg'],
     #                                       'Chest': ['Head', 'Left Shoulder', 'Right Shoulder'],
