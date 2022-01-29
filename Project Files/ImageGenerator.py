@@ -121,7 +121,7 @@ class BodyPart:
             parent.__add_child(self)
             joint_rotation = parent.rotation
             center = parent.position + Vector2D(x_translate, y_translate)
-        # create_affine_transform(math.radians(inner_rotation), Vector2D(), dist_from_parent,
+        # create_affine_transform(math.radians(inner_rotation), Vector2D(), dist_from_parent, Vector2D(x_scaling, y_scaling),
         #                         name, True, self.im.size[0])  # TODO: This is just to generate initial transformations
         self.position = rotate(center, center + dist_from_parent, -joint_rotation)
         self.center = center
@@ -274,9 +274,10 @@ def create_image(character, parameters, draw_skeleton=False, omit_layers=False, 
         transform_matrix = transformations.get(part, np.array([1, 0, 0, 0, 1, 0]))
         matrix_list.append(transform_matrix)
 
+    i = np.random.randint(len(drawing_order) - 1)
+    j = np.random.randint(len(drawing_order) - 1)
+    drawing_order[j], drawing_order[i] = drawing_order[i], drawing_order[j]
     for part in drawing_order:
-        if omit_layers and part != 'Right Arm':
-            continue
         alpha = ImageOps.invert(layers[part].split()[-1])
         im = Image.composite(im, layers[part], alpha)
     return (im, matrix_list) if as_image else (np.array(im).astype('uint8'), np.array(matrix_list))
@@ -290,7 +291,7 @@ def create_body_hierarchy(parameters, character):
         # parameters[0] = [5, 14, -29, -16, 22, -10, -22, 14, -21, -26]  # TODO: Always comment out when starting
         parameters = parameters.transpose()
     else:
-        parameters = np.array([0, 0, 0, 1, 1] * len(character.char_tree_array)).\
+        parameters = np.array([0, 1, 1, 0, 0] * len(character.char_tree_array)).\
             reshape((len(character.char_tree_array), 5))
     parts_list = []
     for i, part in enumerate(character.char_tree_array):
@@ -304,16 +305,16 @@ def create_body_hierarchy(parameters, character):
 def generate_parameters(angle_range, num_layers, samples_num):
     angles = np.random.randint(-angle_range, angle_range, size=samples_num * num_layers). \
         reshape((samples_num, 1, num_layers))
-    x_scaling = np.random.uniform(0.8, 1.2, size=samples_num * num_layers). \
+    x_scaling = np.random.uniform(0.9, 1.1, size=samples_num * num_layers). \
         reshape((samples_num, 1, num_layers))
-    y_scaling = np.random.uniform(0.8, 1.2, size=samples_num * num_layers). \
+    y_scaling = np.random.uniform(0.9, 1.1, size=samples_num * num_layers). \
         reshape((samples_num, 1, num_layers))
     x_translate = np.random.randint(-1, 1, size=samples_num * num_layers). \
         reshape((samples_num, 1, num_layers))
     y_translate = np.random.randint(-1, 1, size=samples_num * num_layers). \
         reshape((samples_num, 1, num_layers))
-    parameters = np.concatenate((angles, x_scaling / x_scaling,
-                                 y_scaling / y_scaling, x_translate * 0, y_translate * 0), axis=1)
+    parameters = np.concatenate((angles, x_scaling,
+                                 y_scaling, x_translate, y_translate), axis=1)
     return parameters
 
 
@@ -341,27 +342,33 @@ if __name__ == "__main__":
     # json.dump(char, open(char.path + 'Config', 'w'), default=lambda o: o.__dict__,
     #         sort_keys=True, indent=4)
     load_data(samples_num=25, angle_range=15)
-    # Character.create_default_config_file(PATH + 'Character Layers\\Default Character\\', 'Lower Torso',
-    #                                      {'Root': ['Chest', 'Upper Left Leg', 'Upper Right Leg'],
-    #                                       'Chest': ['Head', 'Left Shoulder', 'Right Shoulder'],
+    # Character.create_default_config_file(config['dirs']['source_dir'] + 'Character Layers\\Aang2\\', 'Torso',
+    #                                      {'Root': ['Head', 'Left Shoulder', 'Right Shoulder', 'Left Upper Leg', 'Right Upper Leg'],
     #                                       'Left Shoulder': ['Left Arm'],
+    #                                       'Left Arm': ['Left Palm'],
     #                                       'Right Shoulder': ['Right Arm'],
-    #                                       'Upper Left Leg': ['Lower Left Leg'],
-    #                                       'Upper Right Leg': ['Lower Right Leg'],
+    #                                       'Right Arm': ['Right Palm'],
+    #                                       'Left Upper Leg': ['Left Lower Leg'],
+    #                                       'Left Lower Leg': ['Left Foot'],
+    #                                       'Right Upper Leg': ['Right Lower Leg'],
+    #                                       'Right Lower Leg': ['Right Foot'],
     #                                       },
-    #                                      ["Root",
-    #                                       "Upper Left Leg",
-    #                                       "Lower Left Leg",
-    #                                       "Upper Right Leg",
-    #                                       "Lower Right Leg",
-    #                                       "Chest",
-    #                                       "Head",
-    #                                       "Left Shoulder",
+    #                                      ["Head",
+    #                                       "Root",
+    #                                       "Left Foot",
+    #                                       "Left Lower Leg",
+    #                                       "Left Upper Leg",
+    #                                       "Right Foot",
+    #                                       "Right Lower Leg",
+    #                                       "Right Upper Leg",
+    #                                       "Left Palm",
     #                                       "Left Arm",
-    #                                       "Right Shoulder",
-    #                                       "Right Arm"])
-    #
+    #                                       "Left Shoulder",
+    #                                       "Right Palm",
+    #                                       "Right Arm",
+    #                                       "Right Shoulder"])
+
     # char = Character(config['dirs']['source_dir'] + 'Character Layers\\Aang2\\Config.txt')
-    # parameters = generate_parameters(45, len(char.char_tree_array), 1)
-    # im = create_image(char, parameters[0], draw_skeleton=False, print_dict=False, as_image=True)
+    # parameters = generate_parameters(0, len(char.char_tree_array), 1)
+    # im, mat = create_image(char, parameters[0], draw_skeleton=False, print_dict=False, as_image=True)
     # im.show()

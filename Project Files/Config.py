@@ -5,33 +5,35 @@ config = \
         'dirs':
             {
                 'source_dir': str(Path(__file__).resolve().parent) + '\\',
-                'comment': 'Testing new dataloader with large dataset'
+                'comment': 'Aang with extra layers'
             },
 
         'dataset':
             {
                 'character': 'Aang2',
-                'name': 'samples=50000 angle_range=60',
+                'name': 'samples=100000 angle_range=60',
                 'batch_size': 32,
-                'samples_num': 50000,
+                'samples_num': 100000,
                 'angle_range': 60,
             },
 
         'training':
             {
                 'lr': 0.0001,
-                'epochs': 50,
-                'kernel_sizes': [9, 7, 5, 3],
-                'grad_kernel_sizes': [13, 11, 9, 7, 5],
+                'epochs': 30,
                 'supervised_loss': 1.0,
-                'lambda': 0.0001,
-                'alpha': 0.1,
                 'base_model': None,
+            },
+
+        'transformation':
+            {
+                'noise': 0.2,
+                'blur_kernels': [3, 5, 7, 9, 13],
             },
 
         'inspection':
             {
-                'num_iter_to_print': 30,
+                'num_iter_to_print': 50,
             },
 
         'network':

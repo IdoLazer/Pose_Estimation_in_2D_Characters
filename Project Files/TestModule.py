@@ -20,6 +20,7 @@ def test_frames(base_model=None):
         os.mkdir(output_path)
     except OSError:
         print("Creation of the directory %s failed" % output_path)
+    canonicals = []
     for filename in os.listdir(config['dirs']['source_dir'] + 'Test Inputs\\Images'):
         if filename.endswith(".png"):
             new_im = Image.new("RGBA", (128, 128))
@@ -28,15 +29,18 @@ def test_frames(base_model=None):
             im = Image.composite(new_im, im, alpha)
             im = np.array(im).astype('uint8')
             im = (im - 127.5) / 127.5
-            im = torch.tensor(np.array([im], dtype='float64'))
+            im = torch.tensor(im).double()
+            im = im.to(TorchLearner.device)
+            im = im.permute(2, 0, 1)
+            im = TorchLearner.im_transform(im)
+            im = im.unsqueeze(0)
             canonical = TorchLearner.create_canonical(net.character, batch=1)
             with torch.no_grad():
-                im = im.to(TorchLearner.device)
-                im = im.permute(0, 3, 1, 2)
                 im = TorchLearner.normalize_image(im, -1, 1)
-                outputs, _, _, _ = net(torch.cat([im, canonical], dim=2))
+                transforms, part_layers, part_layers_dict = net(torch.cat([im, canonical], dim=2))
                 im = im.permute(0, 2, 3, 1)
                 image = (torch.cat([im[i] for i in range(1)], dim=1))
+                outputs = TorchLearner.compose_image(part_layers, part_layers_dict)
                 output = (torch.cat([outputs[i] for i in range(1)], dim=2)).permute(1, 2, 0)
                 TorchLearner.imsave(image.cpu(), filename[:-4] + "-input", output_path)
                 TorchLearner.imsave(output.cpu(), filename[:-4] + "-output", output_path)
@@ -47,4 +51,4 @@ def test_frames(base_model=None):
 
 
 if __name__ == '__main__':
-    test_frames('15-12-2021 18-49-50 Aang2 45 range with supervised loss ONLY')
+    test_frames('26-01-2022 15-32-05 Aang with extra layers')
