@@ -5,16 +5,18 @@ config = \
         'dirs':
             {
                 'source_dir': str(Path(__file__).resolve().parent) + '\\',
-                'comment': 'Aang with extra layers'
+                'comment': 'increasing noise after bug fix and more parameters'
             },
 
         'dataset':
             {
                 'character': 'Aang2',
-                'name': 'samples=100000 angle_range=60',
+                'name': 'samples=150000 angle_range=80',
                 'batch_size': 32,
-                'samples_num': 100000,
-                'angle_range': 60,
+                'samples_num': 150000,
+                'angle_range': 80,
+                'scaling_range': [0.8, 1.3],
+                'translation_range': [-3, 3],
             },
 
         'training':
@@ -28,12 +30,12 @@ config = \
         'transformation':
             {
                 'noise': 0.2,
-                'blur_kernels': [3, 5, 7, 9, 13],
+                'blur_kernels': [3, 5, 7, 9, 11, 13],
             },
 
         'inspection':
             {
-                'num_iter_to_print': 50,
+                'num_iter_to_print': 100,
             },
 
         'network':

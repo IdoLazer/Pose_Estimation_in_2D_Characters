@@ -5,6 +5,8 @@ import numpy as np
 import torch
 from PIL import Image, ImageDraw, ImageOps
 from tqdm import tqdm
+
+import DataModule
 from Config import config
 
 
@@ -24,6 +26,15 @@ class Vector2D:
         y = self.y - other.y
         return Vector2D(x, y)
 
+    def __mul__(self, other):
+        if isinstance(other, Vector2D):
+            x = self.x * other.x
+            y = self.y * other.y
+        else:
+            x = self.x * other
+            y = self.y * other
+        return Vector2D(x, y)
+
     def __iadd__(self, other):
         self.x += other.x
         self.y += other.y
@@ -34,9 +45,22 @@ class Vector2D:
         self.y -= other.y
         return self
 
+    def __imul__(self, other):
+        if isinstance(other, Vector2D):
+            self.x *= other.x
+            self.y *= other.y
+        else:
+            self.x *= other
+            self.y *= other
+        return self
+
     def __floordiv__(self, other):
-        self.x /= other
-        self.y /= other
+        if isinstance(other, Vector2D):
+            self.x /= other.x
+            self.y /= other.y
+        else:
+            self.x /= other
+            self.y /= other
         return self
 
     def __str__(self):
@@ -115,18 +139,25 @@ class BodyPart:
         elif path is not None:
             self.im = images[name]
         inner_rotation, x_scaling, y_scaling, x_translate, y_translate = parameters
+        translation = Vector2D(x_translate, y_translate)
+        scaling = Vector2D(x_scaling, y_scaling)
         joint_rotation = math.radians(0)
         center = Vector2D() + Vector2D(x_translate, y_translate)
         if parent is not None:
             parent.__add_child(self)
             joint_rotation = parent.rotation
-            center = parent.position + Vector2D(x_translate, y_translate)
+            center = parent.position + translation
+            dist_from_parent = dist_from_parent * parent.scaling
+            scaling.x = np.min([np.max([scaling.x * parent.scaling.x, config['dataset']['scaling_range'][0]]),
+                              config['dataset']['scaling_range'][1]])
+            scaling.y = np.min([np.max([scaling.y * parent.scaling.y, config['dataset']['scaling_range'][0]]),
+                              config['dataset']['scaling_range'][1]])
         # create_affine_transform(math.radians(inner_rotation), Vector2D(), dist_from_parent, Vector2D(x_scaling, y_scaling),
         #                         name, True, self.im.size[0])  # TODO: This is just to generate initial transformations
         self.position = rotate(center, center + dist_from_parent, -joint_rotation)
         self.center = center
         self.rotation = joint_rotation + math.radians(inner_rotation)
-        self.scaling = Vector2D(x_scaling, y_scaling)
+        self.scaling = scaling
         self.children = []
 
     def __add_child(self, body_part):
@@ -166,11 +197,12 @@ def create_affine_transform(angle, center, displacement, scaling, name, print_di
     sin = math.sin(angle)
     x, y = (0, 0) if (print_dict or for_label) else (center.x, center.y)
     nx, ny = x + dx, y + dy
-    a = cos / 1
-    b = sin / 1
+    sx, sy = scaling.x, scaling.y
+    a = cos / sx
+    b = sin / sx
     c = x - a * nx - b * ny
-    d = -sin / 1
-    e = cos / 1
+    d = -sin / sy
+    e = cos / sy
     f = y - d * nx - e * ny
     if print_dict:
         bias = [a, b, c, d, e, f]
@@ -187,31 +219,10 @@ def traverse_tree(cur, size, layers, matrices, draw_skeleton, skeleton_draw, tra
     image_center = Vector2D(size / 2, size / 2)
     im = cur.im
     if transform:
-        # Scale layer according to scaling parameter
-        im = im.resize((int(size * cur.scaling.x), int(size * cur.scaling.y)), resample=Image.BILINEAR)
-        if cur.scaling.x < 1:
-            left = 0
-            right = int(size * cur.scaling.x)
-        else:
-            left = (int(size * cur.scaling.x) / 2) - (size / 2)
-            right = (int(size * cur.scaling.x) / 2) + (size / 2)
-        if cur.scaling.y < 1:
-            top = 0
-            down = int(size * cur.scaling.y)
-        else:
-            top = (int(size * cur.scaling.y) / 2) - (size / 2)
-            down = (int(size * cur.scaling.y) / 2) + (size / 2)
-        im = im.crop((left, top, right, down))
-        img_w, img_h = im.size
-        background = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-        bg_w, bg_h = background.size
-        offset = ((bg_w - img_w) // 2, (bg_h - img_h) // 2)
-        background.paste(im, offset)
-        # transform scaled layer according to other parameters
         transform_matrix = create_affine_transform(cur.rotation, image_center, cur.position, cur.scaling, cur.name,
                                                    for_label=True, im_size=size)
         matrices[cur.name] = transform_matrix
-        im = background.transform((size, size),
+        im = im.transform((size, size),
                                   Image.AFFINE,
                                   data=create_affine_transform(cur.rotation, image_center, cur.position,
                                                                cur.scaling, cur.name, print_dict).flatten()[:6],
@@ -264,7 +275,7 @@ def generate_layers(character, parameters, draw_skeleton=False, as_tensor=False,
     return torch.tensor(np.array(layers_list, dtype='float64')), torch.tensor(np.array(matrix_list, dtype='float64'))
 
 
-def create_image(character, parameters, draw_skeleton=False, omit_layers=False, print_dict=False, as_image=False):
+def create_image(character, parameters, draw_skeleton=False, print_dict=False, as_image=False, random_order=True):
     drawing_order = character.drawing_order + ['Skeleton']
     layers, transformations = generate_layers(character, parameters, draw_skeleton, print_dict=print_dict)
     im_size = character.image_size
@@ -274,9 +285,13 @@ def create_image(character, parameters, draw_skeleton=False, omit_layers=False, 
         transform_matrix = transformations.get(part, np.array([1, 0, 0, 0, 1, 0]))
         matrix_list.append(transform_matrix)
 
-    i = np.random.randint(len(drawing_order) - 1)
-    j = np.random.randint(len(drawing_order) - 1)
-    drawing_order[j], drawing_order[i] = drawing_order[i], drawing_order[j]
+    if random_order:
+        rand_int = np.random.randint(5)
+        for rand in range(rand_int):
+            i = np.random.randint(len(drawing_order) - 1)
+            j = np.random.randint(len(drawing_order) - 1)
+            drawing_order[j], drawing_order[i] = drawing_order[i], drawing_order[j]
+
     for part in drawing_order:
         alpha = ImageOps.invert(layers[part].split()[-1])
         im = Image.composite(im, layers[part], alpha)
@@ -288,7 +303,7 @@ def create_body_hierarchy(parameters, character):
         angles = parameters[0]
         for i in range(len(angles)):
             angles[i] += character.sample_params[i]
-        # parameters[0] = [5, 14, -29, -16, 22, -10, -22, 14, -21, -26]  # TODO: Always comment out when starting
+        # parameters[0] = [0, 0, 50, 60, 0, -10, 60, 60, -5, 10, -30, -30, 30, -30]  # TODO: Always comment out when starting
         parameters = parameters.transpose()
     else:
         parameters = np.array([0, 1, 1, 0, 0] * len(character.char_tree_array)).\
@@ -302,46 +317,10 @@ def create_body_hierarchy(parameters, character):
     return parts_list[0]
 
 
-def generate_parameters(angle_range, num_layers, samples_num):
-    angles = np.random.randint(-angle_range, angle_range, size=samples_num * num_layers). \
-        reshape((samples_num, 1, num_layers))
-    x_scaling = np.random.uniform(0.9, 1.1, size=samples_num * num_layers). \
-        reshape((samples_num, 1, num_layers))
-    y_scaling = np.random.uniform(0.9, 1.1, size=samples_num * num_layers). \
-        reshape((samples_num, 1, num_layers))
-    x_translate = np.random.randint(-1, 1, size=samples_num * num_layers). \
-        reshape((samples_num, 1, num_layers))
-    y_translate = np.random.randint(-1, 1, size=samples_num * num_layers). \
-        reshape((samples_num, 1, num_layers))
-    parameters = np.concatenate((angles, x_scaling,
-                                 y_scaling, x_translate, y_translate), axis=1)
-    return parameters
-
-
-def load_data(samples_num=100, angle_range=15):
-    num_layers = len(char.char_tree_array)
-    labels = generate_parameters(angle_range, num_layers, samples_num)
-
-    forged_images = []
-    all_matrices = []
-    i = 1
-    for index in tqdm(range(len(labels))):
-        parameters = labels[index]
-        im, matrices = create_image(char, parameters, draw_skeleton=False,
-                                    print_dict=False, as_image=True)
-        forged_images.append(im)
-        all_matrices.append(matrices)
-        i += 1
-
-    print("finished forging data")
-    return forged_images, all_matrices
-
-
 if __name__ == "__main__":
     # char = Character()
     # json.dump(char, open(char.path + 'Config', 'w'), default=lambda o: o.__dict__,
     #         sort_keys=True, indent=4)
-    load_data(samples_num=25, angle_range=15)
     # Character.create_default_config_file(config['dirs']['source_dir'] + 'Character Layers\\Aang2\\', 'Torso',
     #                                      {'Root': ['Head', 'Left Shoulder', 'Right Shoulder', 'Left Upper Leg', 'Right Upper Leg'],
     #                                       'Left Shoulder': ['Left Arm'],
@@ -368,7 +347,8 @@ if __name__ == "__main__":
     #                                       "Right Arm",
     #                                       "Right Shoulder"])
 
-    # char = Character(config['dirs']['source_dir'] + 'Character Layers\\Aang2\\Config.txt')
-    # parameters = generate_parameters(0, len(char.char_tree_array), 1)
-    # im, mat = create_image(char, parameters[0], draw_skeleton=False, print_dict=False, as_image=True)
-    # im.show()
+    char = Character(config['dirs']['source_dir'] + 'Character Layers\\Aang2\\Config.txt')
+    parameters = DataModule.generate_parameters(len(char.char_tree_array), 1)
+    im, mat = create_image(char, parameters[0], draw_skeleton=False, print_dict=False, as_image=True, random_order=False)
+    im.show()
+    # im.save(config['dirs']['source_dir'] + 'Test Inputs\\Images\\fabricated_post.png')

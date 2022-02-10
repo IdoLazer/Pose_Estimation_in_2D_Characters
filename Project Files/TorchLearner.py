@@ -20,6 +20,8 @@ print(torch.cuda.get_device_name())
 
 inputs_gaussian_blur = [kornia.filters.GaussianBlur2d((i, i), (7, 7), 'replicate').to(device)
                         for i in config['transformation']['blur_kernels']]
+input_gaussian_blur = inputs_gaussian_blur[0]
+noise_scale = 1 / config['training']['epochs']
 
 class Net(nn.Module):
     def __init__(self, character, batch):
@@ -27,16 +29,22 @@ class Net(nn.Module):
         self.num_layers = len(character.char_tree_array)
         self.character = character
         self.batch = batch
-        k1, k2, k3 = 8, 4, 3
-        s1, s2, s3 = 4, 2, 1
+        k1, k2, k3, k4 = 8, 4, 4, 2
+        s1, s2, s3, s4 = 4, 2, 1, 1
         n_out1 = ((character.image_size - k1) / s1) + 1
-        n_out2 = (((n_out1 - k2) / s2) + 1) // 2
-        n_out3 = (((n_out2 - k3) / s3) + 1) // 2
+        n_out2 = ((n_out1 - k2) // s2) + 1
+        n_out3 = ((n_out2 - k3) // s3) + 1
+        n_out4 = ((n_out3 - k4) // s4) + 1
+        print(f"{n_out1=}")
+        print(f"{n_out2=}")
+        print(f"{n_out3=}")
+        print(f"{n_out4=}")
         self.conv1 = nn.Conv2d(4, 32, k1, s1)
         self.conv2 = nn.Conv2d(32, 64, k2, s2)
         self.conv3 = nn.Conv2d(64, 64, k3, s3)
+        self.conv4 = nn.Conv2d(64, 64, k4, s4)
         # self.conv4 = nn.Conv2d(32, 64, 3)
-        self.fc1 = nn.Linear(int(64 * n_out3 * n_out3), 512)
+        self.fc1 = nn.Linear(int(64 * n_out4 * n_out4), 512)
         self.fc2 = nn.Linear(512, 6 * self.num_layers)
         self.fc3 = nn.Linear(6 * self.num_layers, 6 * self.num_layers)
         self.fc4 = nn.Linear(6 * self.num_layers, 6 * self.num_layers)
@@ -59,8 +67,9 @@ class Net(nn.Module):
 
     def localization(self, x):
         x = F.relu(self.conv1(x))
-        x = F.max_pool2d(F.relu(self.conv2(x)), (2, 2))
-        x = F.max_pool2d(F.relu(self.conv3(x)), (2, 2))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
         # x = F.max_pool2d(F.relu(self.conv4(x)), (2, 2))
         x = torch.flatten(x, start_dim=1)
         x = F.relu(self.fc1(x))
@@ -155,6 +164,9 @@ def train():
                                                               shuffle=False)))[0]
     torch.autograd.set_detect_anomaly(True)
     for epoch in range(training_conf['epochs']):  # loop over the dataset multiple times
+        global input_gaussian_blur, noise_scale
+        input_gaussian_blur = inputs_gaussian_blur[int((epoch / training_conf['epochs']) * len(inputs_gaussian_blur))]
+        noise_scale = 1 / (training_conf['epochs'] - epoch)
         running_loss = []
         trainset = dataset.get_train_dataloader(batch_size=config['dataset']['batch_size'], shuffle=True)
 
@@ -405,8 +417,8 @@ def main():
 
 
 def im_transform(im):
-    im = inputs_gaussian_blur[np.random.randint(len(inputs_gaussian_blur))](im.unsqueeze(0))[0]
-    noise = np.random.uniform(-0.2, 0.2, (3, im.shape[1], im.shape[2]))
+    im = input_gaussian_blur(im.unsqueeze(0))[0]
+    noise = np.random.uniform(-noise_scale, noise_scale, (3, im.shape[1], im.shape[2]))
     im[:3, :, :] += torch.tensor(noise).to(device)
     im = normalize_image(im, -1, 1)
     return im
