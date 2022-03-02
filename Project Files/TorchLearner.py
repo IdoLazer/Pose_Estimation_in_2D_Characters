@@ -1,6 +1,8 @@
 import os
 from datetime import datetime
 
+from PIL import ImageOps
+import PIL.Image as Image
 from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,77 +20,123 @@ from Config import config
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.get_device_name())
 
-inputs_gaussian_blur = [kornia.filters.GaussianBlur2d((i, i), (7, 7), 'replicate').to(device)
-                        for i in config['transformation']['blur_kernels']]
+inputs_gaussian_blur = [kornia.filters.GaussianBlur2d((i, i), (j, j), 'replicate').to(device)
+                        for i, j in
+                        zip(config['transformation']['blur_kernels'], config['transformation']['blur_kernels_sigmas'])]
 input_gaussian_blur = inputs_gaussian_blur[0]
-noise_scale = 1 / config['training']['epochs']
+noise_scale = config['transformation']['noise'][0]
+
 
 class Net(nn.Module):
     def __init__(self, character, batch):
         super(Net, self).__init__()
-        self.num_layers = len(character.char_tree_array)
+        self.num_character_layers = len(character.char_tree_array)
         self.character = character
         self.batch = batch
-        k1, k2, k3, k4 = 8, 4, 4, 2
-        s1, s2, s3, s4 = 4, 2, 1, 1
-        n_out1 = ((character.image_size - k1) / s1) + 1
-        n_out2 = ((n_out1 - k2) // s2) + 1
-        n_out3 = ((n_out2 - k3) // s3) + 1
-        n_out4 = ((n_out3 - k4) // s4) + 1
-        print(f"{n_out1=}")
-        print(f"{n_out2=}")
-        print(f"{n_out3=}")
-        print(f"{n_out4=}")
-        self.conv1 = nn.Conv2d(4, 32, k1, s1)
-        self.conv2 = nn.Conv2d(32, 64, k2, s2)
-        self.conv3 = nn.Conv2d(64, 64, k3, s3)
-        self.conv4 = nn.Conv2d(64, 64, k4, s4)
-        # self.conv4 = nn.Conv2d(32, 64, 3)
-        self.fc1 = nn.Linear(int(64 * n_out4 * n_out4), 512)
-        self.fc2 = nn.Linear(512, 6 * self.num_layers)
-        self.fc3 = nn.Linear(6 * self.num_layers, 6 * self.num_layers)
-        self.fc4 = nn.Linear(6 * self.num_layers, 6 * self.num_layers)
-        torch.nn.init.xavier_uniform_(self.conv1.weight, config['network']['weight_scaling'])
-        torch.nn.init.xavier_uniform_(self.conv2.weight, config['network']['weight_scaling'])
-        torch.nn.init.xavier_uniform_(self.conv3.weight, config['network']['weight_scaling'])
+
+        # init network layers
+        self.layers = []
+        curr_im_size = character.image_size
+        channels = 4
+        parameters = channels * curr_im_size * curr_im_size
+        for i, layer_dict in enumerate(config['network']['architecture']):
+            layer = None
+            if layer_dict['type'] == 'conv':
+                layer = nn.Conv2d(channels, layer_dict['out_channels'], layer_dict['kernel'], layer_dict['stride'])
+                curr_im_size = ((curr_im_size - layer_dict['kernel']) / layer_dict['stride']) + 1
+                channels = layer_dict['out_channels']
+                parameters = channels * curr_im_size * curr_im_size
+            elif layer_dict['type'] == 'fc':
+                layer = nn.Linear(int(parameters), int(layer_dict['out_parameters']))
+                parameters = layer_dict['out_parameters']
+            elif layer_dict['type'] == 'fc_layers':
+                layer = nn.Linear(int(parameters), int(self.num_character_layers * layer_dict['out_parameters']))
+                parameters = self.num_character_layers * layer_dict['out_parameters']
+            elif layer_dict['type'] == 'pooling':
+                curr_im_size //= 2
+                parameters = channels * curr_im_size * curr_im_size
+                print(f"{parameters=}")
+
+            if layer is not None:
+                torch.nn.init.xavier_uniform_(layer.weight, config['network']['weight_scaling'])
+                if i == len(config['network']['architecture']) - 1:
+                    with torch.no_grad():
+                        bias = []
+                        for part in character.char_tree_array:
+                            part_bias = character.canonical_bias_dict[part]
+                            part_bias[2] /= (self.character.image_size / 2)
+                            part_bias[5] /= (self.character.image_size / 2)
+                            bias += part_bias
+                        layer.bias = torch.nn.Parameter(torch.DoubleTensor(bias).
+                                                        view(self.num_character_layers * layer_dict['out_parameters']))
+                layer_dict['layer'] = layer
+                self.add_module(str(i), layer)
+
+            self.layers.append(layer_dict)
+            print(f"{curr_im_size=}")
+            print(f"{parameters=}")
+
+        # k1, k2, k3, k4 = config['network']['kernels']
+        # s1, s2, s3, s4 = config['network']['strides']
+        # n_out1 = ((character.image_size - k1) / s1) + 1
+        # n_out2 = (((n_out1 - k2) // s2) + 1) // 2
+        # n_out3 = (((n_out2 - k3) // s3) + 1) // 2
+        # n_out4 = (((n_out3 - k4) // s4) + 1) // 2
+        # print(f"{n_out1=}")
+        # print(f"{n_out2=}")
+        # print(f"{n_out3=}")
+        # print(f"{n_out4=}")
+        # self.conv1 = nn.Conv2d(4, 32, k1, s1)
+        # self.conv2 = nn.Conv2d(32, 64, k2, s2)
+        # self.conv3 = nn.Conv2d(64, 64, k3, s3)
+        # self.conv4 = nn.Conv2d(64, 64, k4, s4)
+        # self.fc1 = nn.Linear(int(64 * n_out4 * n_out4), 512)
+        # self.fc2 = nn.Linear(512, 6 * self.num_layers)
+        # self.fc3 = nn.Linear(6 * self.num_layers, 6 * self.num_layers)
+        # self.fc4 = nn.Linear(6 * self.num_layers, 6 * self.num_layers)
+        # torch.nn.init.xavier_uniform_(self.conv1.weight, config['network']['weight_scaling'])
+        # torch.nn.init.xavier_uniform_(self.conv2.weight, config['network']['weight_scaling'])
+        # torch.nn.init.xavier_uniform_(self.conv3.weight, config['network']['weight_scaling'])
         # torch.nn.init.xavier_uniform_(self.conv4.weight, config['network']['weight_scaling'])
-        torch.nn.init.xavier_uniform_(self.fc1.weight, config['network']['weight_scaling'])
-        torch.nn.init.xavier_uniform_(self.fc2.weight, config['network']['weight_scaling'])
-        torch.nn.init.xavier_uniform_(self.fc3.weight, config['network']['weight_scaling'])
-        torch.nn.init.xavier_uniform_(self.fc4.weight, config['network']['weight_scaling'])
-        with torch.no_grad():
-            bias = []
-            for part in character.char_tree_array:
-                part_bias = character.canonical_bias_dict[part]
-                part_bias[2] /= (self.character.image_size / 2)
-                part_bias[5] /= (self.character.image_size / 2)
-                bias += part_bias
-            self.fc4.bias = torch.nn.Parameter(torch.DoubleTensor(bias).view(6 * self.num_layers))
+        # torch.nn.init.xavier_uniform_(self.fc1.weight, config['network']['weight_scaling'])
+        # torch.nn.init.xavier_uniform_(self.fc2.weight, config['network']['weight_scaling'])
+        # torch.nn.init.xavier_uniform_(self.fc3.weight, config['network']['weight_scaling'])
+        # torch.nn.init.xavier_uniform_(self.fc4.weight, config['network']['weight_scaling'])
 
     def localization(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        x = F.relu(self.conv4(x))
+        for layer_dict in self.layers:
+            if layer_dict['type'] in ['conv', 'fc', 'fc_layers']:
+                x = layer_dict['layer'](x)
+                if layer_dict['activation'] is not None:
+                    if layer_dict['activation'] == 'relu':
+                        x = F.relu(x)
+            elif layer_dict['type'] == 'pooling':
+                x = F.max_pool2d(x, (layer_dict['stride'], layer_dict['stride']))
+            elif layer_dict['type'] == 'flatten':
+                x = torch.flatten(x, start_dim=1)
+        # x = F.relu(self.conv1(x))
+        # x = F.max_pool2d(F.relu(self.conv2(x)), (2, 2))
+        # x = F.max_pool2d(F.relu(self.conv3(x)), (2, 2))
         # x = F.max_pool2d(F.relu(self.conv4(x)), (2, 2))
-        x = torch.flatten(x, start_dim=1)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        x = self.fc4(x)
+        # # x = F.max_pool2d(F.relu(self.conv4(x)), (2, 2))
+        # x = torch.flatten(x, start_dim=1)
+        # x = F.relu(self.fc1(x))
+        # x = F.relu(self.fc2(x))
+        # x = F.relu(self.fc3(x))
+        # x = self.fc4(x)
         return x
 
     # Spatial transformer network forward function
     # def stn(self, x, body, head, left_leg, right_leg):
     def stn(self, x):
-        affine_transforms = self.localization(x[0])
+        affine_transforms = self.localization(x)
         parent_transforms_3x3_matrices = []
         # close_to_eye_matrices = []
         # translation_values = []
-        part_layers = []
+        # part_layers = []
         part_transforms = []
-        part_layers_dict = dict()
-        affine_matrix_last_row = torch.tensor(x[0].shape[0] * [0, 0, 1]).view(-1, 1, 3).to(device)
+        # part_layers_dict = dict()
+        affine_matrix_last_row = torch.tensor(x.shape[0] * [0, 0, 1]).view(-1, 1, 3).to(device)
         for i, part in enumerate(self.character.char_tree_array):
             part_transform = affine_transforms[:, i * 6: (i * 6) + 6].view(-1, 2, 3)
             # part_transform[:, 0, 2] /= (self.character.image_size / 2)
@@ -105,16 +153,16 @@ class Net(nn.Module):
                 part_transform_3x3_matrix = torch.matmul(part_transform_3x3_matrix, parent_transform_3x3_matrix)
                 part_transform = part_transform_3x3_matrix[:, :2, :]
             parent_transforms_3x3_matrices.append(part_transform_3x3_matrix)
-            part_grid = F.affine_grid(part_transform, x[i + 1].size(), align_corners=False)
-            part_layer = F.grid_sample(x[i + 1], part_grid, align_corners=False, padding_mode='border')
-            part_layers.append(part_layer)
+            # part_grid = F.affine_grid(part_transform, x[i + 1].size(), align_corners=False)
+            # part_layer = F.grid_sample(x[i + 1], part_grid, align_corners=False, padding_mode='border')
+            # part_layers.append(part_layer)
+            # part_layers_dict[part] = i
             part_transforms.append(torch.unsqueeze(torch.flatten(part_transform, start_dim=1), dim=0))
-            part_layers_dict[part] = i
 
-        return torch.transpose(torch.cat(part_transforms), 0, 1), part_layers, part_layers_dict
+        return torch.transpose(torch.cat(part_transforms), 0, 1)
 
     def forward(self, x):
-        x = list(torch.split(x, int(x.shape[2] / (self.num_layers + 1)), dim=2))
+        # x = list(torch.split(x, int(x.shape[2] / (self.num_character_layers + 1)), dim=2))
         x = self.stn(x)
         return x
 
@@ -154,63 +202,94 @@ def train():
     inspection_path, path = create_folders(net)
     colors = ['blue', 'red', 'orange', 'green', 'pink', 'purple', 'yellow', 'black', 'brown']
     criterion = nn.MSELoss()
+    blurred_canonical = create_canonical(ImageGenerator.char,
+                                         blur=kornia.filters.GaussianBlur2d((7, 7), (7, 7), 'replicate').to(device),
+                                         colored=True)
     canonical = create_canonical(ImageGenerator.char)
     optimizer = optim.Adam(net.parameters(), lr=training_conf['lr'])
     num_iter_to_print = config['inspection']['num_iter_to_print']
     iterations = []
     test_losses = []
     losses_array = []
-    inspection_image = next(iter(dataset.get_train_dataloader(batch_size=config['dataset']['batch_size'],
-                                                              shuffle=False)))[0]
+
+    new_im = Image.new("RGBA", (128, 128))
+    inspection_images = []
+    for i in range(5):
+        im = Image.open(config['dirs']['source_dir'] + f"Test Inputs\\Images\\Pose{i+1}.png")
+        alpha = ImageOps.invert(im.split()[-1])
+        im = Image.composite(new_im, im, alpha)
+        im = np.array(im).astype('uint8')
+        im = (im - 127.5) / 127.5
+        im = torch.tensor(im).double()
+        im = im.to(device)
+        inspection_images.append(im.permute(2, 0, 1))
+
     torch.autograd.set_detect_anomaly(True)
+    gaussian_blur_idx = 0
     for epoch in range(training_conf['epochs']):  # loop over the dataset multiple times
         global input_gaussian_blur, noise_scale
-        input_gaussian_blur = inputs_gaussian_blur[int((epoch / training_conf['epochs']) * len(inputs_gaussian_blur))]
-        noise_scale = 1 / (training_conf['epochs'] - epoch)
+        if int((epoch / training_conf['epochs']) * len(inputs_gaussian_blur)) > gaussian_blur_idx:
+            gaussian_blur_idx += 1
+            input_gaussian_blur = inputs_gaussian_blur[gaussian_blur_idx]
+            save_losses_graphs(colors, iterations, losses_array, path)
+            losses_array = []
+            iterations = []
+            optimizer = optim.Adam(net.parameters(), lr=training_conf['lr'])
+
+        noise_scale = config['transformation']['noise'][0] + \
+            (((epoch + 1) / training_conf['epochs'])
+                * config['transformation']['noise'][1] - config['transformation']['noise'][0])
         running_loss = []
         trainset = dataset.get_train_dataloader(batch_size=config['dataset']['batch_size'], shuffle=True)
 
-        for i in tqdm(range(len(trainset))):
+        for i in tqdm(range(np.min(
+                [len(trainset),
+                 config['dataset']['samples_num'] // config['dataset']['batch_size']]
+        ))):
 
             data = next(iter(trainset))
             inputs, labels = data[0].to(device), data[1].to(device)
-            inputs = normalize_image(inputs, -1, 1)
             # zero the parameter gradients
             optimizer.zero_grad()
 
             # get net output
-            transforms, part_layers, part_layers_dict = net(torch.cat([inputs, canonical[:inputs.shape[0]]], dim=2))
+            transforms = net(inputs)
             inputs = inputs[:, :3, :, :]
 
             # calc loss
-            loss = calc_losses(criterion, labels, transforms)
+            loss = calc_losses(criterion, labels, transforms, blurred_canonical)
             loss.backward()
             optimizer.step()
             running_loss += [loss.item()]
 
             if i == 0 or i == len(trainset) - 1:
                 with torch.no_grad():
-                    save_batch(epoch, i, inputs, part_layers, part_layers_dict, path)
-                    save_inspection_image(inspection_image, canonical, epoch, i, inspection_path, net)
+                    save_batch(epoch, i, inputs, transforms, canonical, path)
+                    save_inspection_image(inspection_images, canonical, epoch, i, inspection_path, net)
             if i % num_iter_to_print == (
                     config['inspection']['num_iter_to_print']) - 1:
                 if len(running_loss) < num_iter_to_print:
                     running_loss = []
                 else:
-                    append_losses(epoch, len(trainset), i, iterations, losses_array,
+                    append_losses(epoch,
+                                  np.min([len(trainset),
+                                          config['dataset']['samples_num'] // config['dataset']['batch_size']]),
+                                  i, iterations, losses_array,
                                   num_iter_to_print, running_loss)
                     running_loss = []
                     with torch.no_grad():
-                        save_inspection_image(inspection_image, canonical, epoch, i, inspection_path, net)
+                        save_inspection_image(inspection_images, canonical, epoch, i, inspection_path, net)
 
-        if (epoch + 1) % 5 == 0:
-            save_losses_graphs(colors, iterations, losses_array, path)
-            losses_array = []
-            iterations = []
-            optimizer = optim.Adam(net.parameters(), lr=training_conf['lr'])
+        # if (epoch + 1) % 5 == 0:
+        #     save_losses_graphs(colors, iterations, losses_array, path)
+        #     losses_array = []
+        #     iterations = []
+        #     optimizer = optim.Adam(net.parameters(), lr=training_conf['lr'])
         test_loss = test(net, path)
         print("test loss epoch %d = %.9f" % (epoch + 1, test_loss))
         test_losses.append(test_loss)
+
+    save_losses_graphs(colors, iterations, losses_array, path)
 
     fig = plt.figure()
     plt.title("test losses for %d epochs" % (len(test_losses)))
@@ -230,15 +309,18 @@ def create_net(net_path, batch=config['dataset']['batch_size']):
     return net
 
 
-def create_canonical(character, batch=config['dataset']['batch_size']):
-    canonical, _ = ImageGenerator.generate_layers(character, None, as_tensor=True, transform=False)
+def create_canonical(character, batch=config['dataset']['batch_size'], blur=None, colored=False):
+    canonical, _ = ImageGenerator.generate_layers(character, None, as_tensor=True, transform=False, colored=colored)
     canonical = torch.cat(batch * [canonical]).reshape(
         batch,
         -1,
         character.image_size,
         4).to(device)
     canonical = canonical.permute(0, 3, 1, 2)
-    return normalize_image(canonical, -1, 1)
+    if blur is not None:
+        canonical = blur(canonical)
+    canonical = normalize_image(canonical, -1, 1)
+    return list(torch.split(canonical, int(canonical.shape[2] / len(ImageGenerator.char.char_tree_array)), dim=2))
 
 
 def create_folders(net):
@@ -267,17 +349,24 @@ def save_losses_graphs(colors, iterations, losses, path):
     plt.close(fig)
 
 
-def save_inspection_image(image, canonical, epoch, i, inspection_path, net):
+def save_inspection_image(images, canonical, epoch, i, inspection_path, net):
     # parse inputs and outputs
-    inspection_input = image.to(device)
-    transforms, part_layers, part_layers_dict = net(torch.cat([inspection_input, canonical], dim=2))
-    inspection_output = compose_image(part_layers, part_layers_dict)
-    inspection_input = inspection_input[:, :3, :, :]
-    inspection_output = inspection_output[:, :3, :, :]
+    inspections = []
+    for image in images:
+        inspection_input = im_transform(image)
+        inspection_input = inspection_input.unsqueeze(0)
+
+        transforms = net(inspection_input)
+        inspection_output = compose_image(transforms, canonical)
+        inspection_input = inspection_input[:, :3, :, :]
+        inspection_output = inspection_output[:, :3, :, :]
+        inspection = torch.cat((inspection_input[0].permute(1, 2, 0).cpu(),
+                                inspection_output[0].permute(1, 2, 0).cpu()))
+        inspections.append(inspection)
 
     # concat and save all images
-    inspection = torch.cat((inspection_input[0].permute(1, 2, 0).cpu(), inspection_output[0].permute(1, 2, 0).cpu()))
-    imsave(inspection, "epoch %d iter %d" % (epoch, i),
+    final = torch.cat([inspection for inspection in inspections], dim=1)
+    imsave(final, f"{epoch=} {i=}",
            inspection_path)
 
 
@@ -311,11 +400,11 @@ def append_losses(epoch, len_trainset, i, iterations, losses, num_iter_to_print,
         (epoch + 1, i + 1, np.sum(running_loss) / num_iter_to_print,))
 
 
-def save_batch(epoch, i, inputs, part_layers, part_layers_dict, path):
+def save_batch(epoch, i, inputs, transforms, canonical, path):
     input_batch = (torch.cat([inputs[i] for i in range(np.min([len(inputs), 4]))],
                              dim=2)).permute(1, 2, 0).cpu()
 
-    outputs = compose_image(part_layers, part_layers_dict)
+    outputs = compose_image(transforms, canonical)
     outputs = outputs[:, :3, :, :]
     output_batch = (torch.cat([outputs[i] for i in range(np.min([len(inputs), 4]))],
                               dim=2)).permute(1, 2, 0).cpu()
@@ -323,7 +412,18 @@ def save_batch(epoch, i, inputs, part_layers, part_layers_dict, path):
            "input (up) vs output (down)- epoch %d iteration %d" % (epoch + 1, i,), path)
 
 
-def compose_image(part_layers, part_layers_dict):
+def compose_image(transforms, canonical):
+    part_layers = []
+    part_layers_dict = dict()
+    affine_transforms = transforms.permute(1, 0, 2)
+    for i, part in enumerate(ImageGenerator.char.char_tree_array):
+        part_transform = affine_transforms[i].reshape((-1, 2, 3))
+        part_layer = canonical[i][:part_transform.shape[0]]
+        part_grid = F.affine_grid(part_transform, part_layer.size(), align_corners=False)
+        part_layer = F.grid_sample(part_layer, part_grid, align_corners=False, padding_mode='border')
+        part_layers.append(part_layer)
+        part_layers_dict[part] = i
+
     stack = None
     for i, part in enumerate(ImageGenerator.char.drawing_order):
         part_layer = part_layers[part_layers_dict[part]]
@@ -340,19 +440,27 @@ def compose_image(part_layers, part_layers_dict):
             # stack_alpha = (stack[:, -1, :, :]).clamp(0, 1)
             # part_layer = (part_layer - 2 * stack_alpha).clamp(-1, 1)
             stack = (stack + (part_layer * part_alpha))  # .clamp(-1)
-            # imshow(stack[0].cpu().view(4, 128, 128).permute(1, 2, 0), '')
     stack = normalize_image(stack, -1, 1)
+    # imshow(stack[0].cpu().view(4, 128, 128).permute(1, 2, 0), '')
     return stack
 
 
-def calc_losses(criterion, labels, transforms):
+def calc_losses(criterion, labels, transforms, canonical):
     supervised_loss = calc_supervised_loss(criterion, labels, transforms)
-    loss = config['training']['supervised_loss'] * supervised_loss
+    unsupervised_loss = calc_unsupervised_loss(criterion, labels, transforms, canonical)
+    loss = config['training']['supervised_loss'] * supervised_loss + \
+           (1 - config['training']['supervised_loss']) * unsupervised_loss
     return loss
 
 
 def calc_supervised_loss(criterion, labels, transforms):
     return criterion(labels, transforms)
+
+
+def calc_unsupervised_loss(criterion, labels, transforms, canonical):
+    output = compose_image(transforms, canonical)
+    input = compose_image(labels, canonical)
+    return criterion(input, output)
 
 
 def append_inputs_outpus(g_inputs, g_outputs, input_images, output_images):
@@ -370,22 +478,26 @@ def check_inputs_outputs(g_inputs, g_outputs, iteration):
 
 
 def test(net, path):
-    canonical = create_canonical(net.character)
+    canonical = create_canonical(net.character,
+                                 blur=kornia.filters.GaussianBlur2d((7, 7), (7, 7), 'replicate').to(device),
+                                 colored=True)
     with torch.no_grad():
         criterion = nn.MSELoss()
         losses = []
         testset = dataset.get_test_dataloader(batch_size=config['dataset']['batch_size'], shuffle=True)
-        for data in testset:
+        for i in tqdm(range(np.min(
+                [len(testset),
+                 config['dataset']['test_samples_num'] // config['dataset']['batch_size']]
+        ))):
+            data = next(iter(testset))
             inputs, labels = data[0], data[1]
-            inputs = normalize_image(inputs, -1, 1)
             # zero the parameter gradients
 
             # get net output
-            transforms, part_layers, part_layers_dict =\
-                net(torch.cat([inputs, canonical[:inputs.shape[0]]], dim=2))
+            transforms = net(inputs)
 
             # calc loss
-            loss = calc_losses(criterion, labels, transforms)
+            loss = calc_losses(criterion, labels, transforms, canonical)
             losses.append(loss)
 
         test_loss = np.average(loss.cpu())
@@ -397,9 +509,8 @@ def showcase(net, path):
     with torch.no_grad():
         data = next(iter(dataset.get_test_dataloader(batch_size=config['dataset']['batch_size'], shuffle=False)))
         images, labels = data[0], data[1]
-        images = normalize_image(images, -1, 1)
-        transforms, part_layers, part_layers_dict = net(torch.cat([images, canonical], dim=2))
-        outputs = compose_image(part_layers, part_layers_dict)
+        transforms = net(images[:4])
+        outputs = compose_image(transforms, canonical)
         images = images.permute(0, 2, 3, 1)
         image = (torch.cat([images[i] for i in range(np.min([images.shape[0], 4]))], dim=1))
         output = (torch.cat([outputs[i] for i in range(np.min([images.shape[0], 4]))], dim=2)).permute(1, 2, 0)
@@ -416,9 +527,14 @@ def main():
     test_frames(path.split('\\')[-1])
 
 
-def im_transform(im):
-    im = input_gaussian_blur(im.unsqueeze(0))[0]
-    noise = np.random.uniform(-noise_scale, noise_scale, (3, im.shape[1], im.shape[2]))
+def im_transform(im, local_noise_scale=0, gaussian=None):
+    if gaussian is None:
+        im = input_gaussian_blur(im.unsqueeze(0))[0]
+    else:
+        im = gaussian(im.unsqueeze(0))[0]
+    if local_noise_scale == 0:
+        local_noise_scale = noise_scale
+    noise = np.random.uniform(-local_noise_scale, local_noise_scale, (3, im.shape[1], im.shape[2]))
     im[:3, :, :] += torch.tensor(noise).to(device)
     im = normalize_image(im, -1, 1)
     return im

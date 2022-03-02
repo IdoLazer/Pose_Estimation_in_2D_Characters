@@ -20,7 +20,6 @@ def test_frames(base_model=None):
         os.mkdir(output_path)
     except OSError:
         print("Creation of the directory %s failed" % output_path)
-    canonicals = []
     for filename in os.listdir(config['dirs']['source_dir'] + 'Test Inputs\\Images'):
         if filename.endswith(".png"):
             new_im = Image.new("RGBA", (128, 128))
@@ -32,15 +31,16 @@ def test_frames(base_model=None):
             im = torch.tensor(im).double()
             im = im.to(TorchLearner.device)
             im = im.permute(2, 0, 1)
-            im = TorchLearner.im_transform(im)
+            im = TorchLearner.im_transform(im, local_noise_scale=config['transformation']['noise'][1],
+                                           gaussian=TorchLearner.inputs_gaussian_blur[
+                                               -1])
             im = im.unsqueeze(0)
             canonical = TorchLearner.create_canonical(net.character, batch=1)
             with torch.no_grad():
-                im = TorchLearner.normalize_image(im, -1, 1)
-                transforms, part_layers, part_layers_dict = net(torch.cat([im, canonical], dim=2))
+                transforms = net(im)
                 im = im.permute(0, 2, 3, 1)
                 image = (torch.cat([im[i] for i in range(1)], dim=1))
-                outputs = TorchLearner.compose_image(part_layers, part_layers_dict)
+                outputs = TorchLearner.compose_image(transforms, canonical)
                 output = (torch.cat([outputs[i] for i in range(1)], dim=2)).permute(1, 2, 0)
                 TorchLearner.imsave(image.cpu(), filename[:-4] + "-input", output_path)
                 TorchLearner.imsave(output.cpu(), filename[:-4] + "-output", output_path)
@@ -51,4 +51,4 @@ def test_frames(base_model=None):
 
 
 if __name__ == '__main__':
-    test_frames('26-01-2022 15-32-05 Aang with extra layers')
+    test_frames('23-02-2022 14-16-15 checking')

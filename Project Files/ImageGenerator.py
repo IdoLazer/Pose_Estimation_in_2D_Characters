@@ -68,6 +68,7 @@ class Vector2D:
 
 
 images = dict()
+colored_images = dict()
 
 
 class Character:
@@ -130,14 +131,17 @@ class Character:
 
 
 class BodyPart:
-    def __init__(self, parent, name, path, dist_from_parent, parameters):
+    def __init__(self, parent, name, path: str, dist_from_parent, parameters):
         self.parent = parent
         self.name = name
         if name not in images and path is not None:
             self.im = Image.open(path)
             images[name] = self.im
+            self.colored_im = Image.open(path.split('.')[0] + '_color.png')
+            colored_images[name] = self.colored_im
         elif path is not None:
             self.im = images[name]
+            self.colored_im = colored_images[name]
         inner_rotation, x_scaling, y_scaling, x_translate, y_translate = parameters
         translation = Vector2D(x_translate, y_translate)
         scaling = Vector2D(x_scaling, y_scaling)
@@ -215,9 +219,10 @@ def create_affine_transform(angle, center, displacement, scaling, name, print_di
         [0, 0, 1]])
 
 
-def traverse_tree(cur, size, layers, matrices, draw_skeleton, skeleton_draw, transform=True, print_dict=False):
+def traverse_tree(cur, size, layers, matrices, draw_skeleton, skeleton_draw, transform=True, print_dict=False,
+                  colored=False):
     image_center = Vector2D(size / 2, size / 2)
-    im = cur.im
+    im = cur.colored_im if colored else cur.im
     if transform:
         transform_matrix = create_affine_transform(cur.rotation, image_center, cur.position, cur.scaling, cur.name,
                                                    for_label=True, im_size=size)
@@ -235,7 +240,7 @@ def traverse_tree(cur, size, layers, matrices, draw_skeleton, skeleton_draw, tra
                 fill="red")
             skeleton_draw.line([(line[0].x, size - line[0].y),
                                 (line[1].x, size - line[1].y)], fill="yellow")
-        traverse_tree(child, size, layers, matrices, draw_skeleton, skeleton_draw, transform, print_dict)
+        traverse_tree(child, size, layers, matrices, draw_skeleton, skeleton_draw, transform, print_dict, colored)
     if not cur.children and draw_skeleton:
         if cur.name == 'Head':
             line = translate_points([cur.position, rotate(cur.position, cur.position + Vector2D(0, 15), -cur.rotation)],
@@ -248,13 +253,15 @@ def traverse_tree(cur, size, layers, matrices, draw_skeleton, skeleton_draw, tra
     layers[cur.name] = im
 
 
-def generate_layers(character, parameters, draw_skeleton=False, as_tensor=False, transform=True, print_dict=False):
+def generate_layers(character, parameters, draw_skeleton=False, as_tensor=False, transform=True, print_dict=False,
+                    colored=False):
     origin = create_body_hierarchy(parameters, character)
     layers = {}
     matrices = {}
     skeleton = Image.new('RGBA', (character.image_size, character.image_size))
     skeleton_draw = ImageDraw.Draw(skeleton)
-    traverse_tree(origin, character.image_size, layers, matrices, draw_skeleton, skeleton_draw, transform, print_dict)
+    traverse_tree(origin, character.image_size, layers, matrices, draw_skeleton, skeleton_draw, transform, print_dict,
+                  colored)
     if not as_tensor:
         layers['Skeleton'] = skeleton
         return layers, matrices
@@ -286,7 +293,7 @@ def create_image(character, parameters, draw_skeleton=False, print_dict=False, a
         matrix_list.append(transform_matrix)
 
     if random_order:
-        rand_int = np.random.randint(5)
+        rand_int = np.random.randint(config['dataset']['max_layer_swaps'])
         for rand in range(rand_int):
             i = np.random.randint(len(drawing_order) - 1)
             j = np.random.randint(len(drawing_order) - 1)
@@ -351,4 +358,4 @@ if __name__ == "__main__":
     parameters = DataModule.generate_parameters(len(char.char_tree_array), 1)
     im, mat = create_image(char, parameters[0], draw_skeleton=False, print_dict=False, as_image=True, random_order=False)
     im.show()
-    # im.save(config['dirs']['source_dir'] + 'Test Inputs\\Images\\fabricated_post.png')
+    im.save(config['dirs']['source_dir'] + 'Test Inputs\\Images\\fabricated_post.png')
