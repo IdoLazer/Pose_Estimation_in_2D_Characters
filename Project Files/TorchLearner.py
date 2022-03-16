@@ -52,13 +52,16 @@ class Net(nn.Module):
             elif layer_dict['type'] == 'fc_layers':
                 layer = nn.Linear(int(parameters), int(self.num_character_layers * layer_dict['out_parameters']))
                 parameters = self.num_character_layers * layer_dict['out_parameters']
+            elif layer_dict['type'] == 'batch_norm':
+                layer = nn.BatchNorm2d(channels)
             elif layer_dict['type'] == 'pooling':
                 curr_im_size //= 2
                 parameters = channels * curr_im_size * curr_im_size
                 print(f"{parameters=}")
 
             if layer is not None:
-                torch.nn.init.xavier_uniform_(layer.weight, config['network']['weight_scaling'])
+                if layer_dict['type'] != 'batch_norm':
+                    torch.nn.init.xavier_uniform_(layer.weight, config['network']['weight_scaling'])
                 if i == len(config['network']['architecture']) - 1:
                     with torch.no_grad():
                         bias = []
@@ -71,7 +74,8 @@ class Net(nn.Module):
                                                         view(self.num_character_layers * layer_dict['out_parameters']))
                 layer_dict['layer'] = layer
                 self.add_module(str(i), layer)
-
+            else:
+                layer_dict['layer'] = None
             self.layers.append(layer_dict)
             print(f"{curr_im_size=}")
             print(f"{parameters=}")
@@ -105,7 +109,7 @@ class Net(nn.Module):
 
     def localization(self, x):
         for layer_dict in self.layers:
-            if layer_dict['type'] in ['conv', 'fc', 'fc_layers']:
+            if layer_dict['layer'] is not None:
                 x = layer_dict['layer'](x)
                 if layer_dict['activation'] is not None:
                     if layer_dict['activation'] == 'relu':
@@ -203,10 +207,10 @@ def train():
     colors = ['blue', 'red', 'orange', 'green', 'pink', 'purple', 'yellow', 'black', 'brown']
     criterion = nn.MSELoss()
     blurred_canonical = create_canonical(ImageGenerator.char,
-                                         blur=kornia.filters.GaussianBlur2d((7, 7), (7, 7), 'replicate').to(device),
+                                         blur=kornia.filters.GaussianBlur2d((5, 5), (3, 3), 'replicate').to(device),
                                          colored=True)
     canonical = create_canonical(ImageGenerator.char)
-    optimizer = optim.Adam(net.parameters(), lr=training_conf['lr'])
+    optimizer = optim.Adam(net.parameters(), lr=training_conf['lr'], weight_decay=training_conf['decay'])
     num_iter_to_print = config['inspection']['num_iter_to_print']
     iterations = []
     test_losses = []
@@ -214,15 +218,16 @@ def train():
 
     new_im = Image.new("RGBA", (128, 128))
     inspection_images = []
-    for i in range(5):
-        im = Image.open(config['dirs']['source_dir'] + f"Test Inputs\\Images\\Pose{i+1}.png")
-        alpha = ImageOps.invert(im.split()[-1])
-        im = Image.composite(new_im, im, alpha)
-        im = np.array(im).astype('uint8')
-        im = (im - 127.5) / 127.5
-        im = torch.tensor(im).double()
-        im = im.to(device)
-        inspection_images.append(im.permute(2, 0, 1))
+    for filename in os.listdir(config['dirs']['source_dir'] + 'Test Inputs\\Inspection Images'):
+        if filename.endswith(".png"):
+            im = Image.open(config['dirs']['source_dir'] + f"Test Inputs\\Inspection Images\\{filename}")
+            alpha = ImageOps.invert(im.split()[-1])
+            im = Image.composite(new_im, im, alpha)
+            im = np.array(im).astype('uint8')
+            im = (im - 127.5) / 127.5
+            im = torch.tensor(im).double()
+            im = im.to(device)
+            inspection_images.append(im.permute(2, 0, 1))
 
     torch.autograd.set_detect_anomaly(True)
     gaussian_blur_idx = 0
@@ -238,14 +243,11 @@ def train():
 
         noise_scale = config['transformation']['noise'][0] + \
             (((epoch + 1) / training_conf['epochs'])
-                * config['transformation']['noise'][1] - config['transformation']['noise'][0])
+                * (config['transformation']['noise'][1] - config['transformation']['noise'][0]))
         running_loss = []
         trainset = dataset.get_train_dataloader(batch_size=config['dataset']['batch_size'], shuffle=True)
-
-        for i in tqdm(range(np.min(
-                [len(trainset),
-                 config['dataset']['samples_num'] // config['dataset']['batch_size']]
-        ))):
+        len_trainset = int(np.min([len(trainset), config['dataset']['samples_num'] // config['dataset']['batch_size']]))
+        for i in tqdm(range(len_trainset)):
 
             data = next(iter(trainset))
             inputs, labels = data[0].to(device), data[1].to(device)
@@ -262,7 +264,7 @@ def train():
             optimizer.step()
             running_loss += [loss.item()]
 
-            if i == 0 or i == len(trainset) - 1:
+            if i == 0 or i == len_trainset - 1:
                 with torch.no_grad():
                     save_batch(epoch, i, inputs, transforms, canonical, path)
                     save_inspection_image(inspection_images, canonical, epoch, i, inspection_path, net)
@@ -272,8 +274,7 @@ def train():
                     running_loss = []
                 else:
                     append_losses(epoch,
-                                  np.min([len(trainset),
-                                          config['dataset']['samples_num'] // config['dataset']['batch_size']]),
+                                  len_trainset,
                                   i, iterations, losses_array,
                                   num_iter_to_print, running_loss)
                     running_loss = []
@@ -288,14 +289,15 @@ def train():
         test_loss = test(net, path)
         print("test loss epoch %d = %.9f" % (epoch + 1, test_loss))
         test_losses.append(test_loss)
+        fig = plt.figure()
+        plt.title("test losses for %d epochs" % (len(test_losses)))
+        plt.plot([i for i in range(len(test_losses))], test_losses)
+        plt.savefig(path + '\\Test Losses.png')
+        plt.close(fig)
 
     save_losses_graphs(colors, iterations, losses_array, path)
 
-    fig = plt.figure()
-    plt.title("test losses for %d epochs" % (len(test_losses)))
-    plt.plot([i for i in range(len(test_losses))], test_losses)
-    plt.savefig(path + '\\Test Losses.png')
-    plt.close(fig)
+
     print('Finished Training')
     torch.save(net.state_dict(), path + '\\aaa_net.pth')
     return net, path
@@ -447,9 +449,12 @@ def compose_image(transforms, canonical):
 
 def calc_losses(criterion, labels, transforms, canonical):
     supervised_loss = calc_supervised_loss(criterion, labels, transforms)
-    unsupervised_loss = calc_unsupervised_loss(criterion, labels, transforms, canonical)
-    loss = config['training']['supervised_loss'] * supervised_loss + \
-           (1 - config['training']['supervised_loss']) * unsupervised_loss
+    if config['training']['supervised_loss'] < 1.0:
+        unsupervised_loss = calc_unsupervised_loss(criterion, labels, transforms, canonical)
+        loss = config['training']['supervised_loss'] * supervised_loss + \
+            (1 - config['training']['supervised_loss']) * unsupervised_loss
+    else:
+        loss = config['training']['supervised_loss'] * supervised_loss
     return loss
 
 
@@ -485,10 +490,9 @@ def test(net, path):
         criterion = nn.MSELoss()
         losses = []
         testset = dataset.get_test_dataloader(batch_size=config['dataset']['batch_size'], shuffle=True)
-        for i in tqdm(range(np.min(
-                [len(testset),
-                 config['dataset']['test_samples_num'] // config['dataset']['batch_size']]
-        ))):
+        len_testset = int(np.min([len(testset),
+                                  config['dataset']['test_samples_num'] // config['dataset']['batch_size']]))
+        for i in tqdm(range(len_testset)):
             data = next(iter(testset))
             inputs, labels = data[0], data[1]
             # zero the parameter gradients

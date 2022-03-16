@@ -41,14 +41,13 @@ def test_frames(base_model=None):
                 im = im.permute(0, 2, 3, 1)
                 image = (torch.cat([im[i] for i in range(1)], dim=1))
                 outputs = TorchLearner.compose_image(transforms, canonical)
-                output = (torch.cat([outputs[i] for i in range(1)], dim=2)).permute(1, 2, 0)
-                TorchLearner.imsave(image.cpu(), filename[:-4] + "-input", output_path)
-                TorchLearner.imsave(output.cpu(), filename[:-4] + "-output", output_path)
-                TorchLearner.imshow(image.cpu(), "input")
-                TorchLearner.imshow(output.cpu(), "output")
+                output = torch.cat([outputs[i] for i in range(1)], dim=2).permute(1, 2, 0)
+                combined = torch.cat([image, output], dim=1)
+                TorchLearner.imsave(combined.cpu(), filename[:-4] + "-combined", output_path)
+                TorchLearner.imshow(combined.cpu(), "combined")
         else:
             continue
 
 
 if __name__ == '__main__':
-    test_frames('23-02-2022 14-16-15 checking')
+    test_frames('09-03-2022 19-32-56 checking only hands')

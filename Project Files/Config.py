@@ -5,60 +5,64 @@ config = \
         'dirs':
             {
                 'source_dir': str(Path(__file__).resolve().parent) + '\\',
-                'comment': 'unsupervised loss and colored layers'
+                'comment': 'checking only hands'
             },
 
         'dataset':
             {
                 'character': 'Aang2',
-                'name': 'samples=150000 angle_range=80',
-                'batch_size': 32,
-                'samples_num': 150000,
-                'test_samples_num': 150000,
-                'angle_range': 80,
-                'scaling_range': [0.85, 1.15],
+                'name': 'Aang limbs',
+                'batch_size': 16,
+                'samples_num': 50000 * 0.8,
+                'test_samples_num': 50000 * 0.2,
+                'angle_range': 120,
+                'scaling_range': [0.7, 1.5],
                 'translation_range': [-2, 2],
                 'max_layer_swaps': 2,
             },
 
         'training':
             {
-                'lr': 0.0001,
-                'epochs': 10,
-                'supervised_loss': 0.5,
+                'lr': 1e-5,
+                'decay': 1e-6,
+                'epochs': 15,
+                'supervised_loss': 1.0,
                 'base_model': None,
             },
 
         'transformation':
             {
-                'noise': [0.1, 0.3],
-                'blur_kernels': [3, 5, 7],
-                'blur_kernels_sigmas': [3, 3, 5],
+                'noise': [0.2, 0.2],
+                'blur_kernels': [5, 5],
+                'blur_kernels_sigmas': [3, 3],
             },
 
         'inspection':
             {
-                'num_iter_to_print': 100,
+                'num_iter_to_print': 50,
             },
 
         'network':
             {
                 'architecture':
                     [
-                        {'type': 'conv', 'out_channels': 32, 'activation': 'relu', 'kernel': 6, 'stride': 2},
+                        {'type': 'conv', 'out_channels': 16, 'activation': 'relu', 'kernel': 8, 'stride': 2},
+                        {'type': 'batch_norm', 'activation': None},
+                        {'type': 'conv', 'out_channels': 32, 'activation': 'relu', 'kernel': 6, 'stride': 1},
+                        {'type': 'batch_norm', 'activation': None},
                         {'type': 'conv', 'out_channels': 64, 'activation': 'relu', 'kernel': 3, 'stride': 1},
                         {'type': 'pooling', 'stride': 2},
+                        {'type': 'batch_norm', 'activation': None},
                         {'type': 'conv', 'out_channels': 64, 'activation': 'relu', 'kernel': 3, 'stride': 1},
                         {'type': 'pooling', 'stride': 2},
-                        {'type': 'conv', 'out_channels': 64, 'activation': 'relu', 'kernel': 3, 'stride': 1},
-                        {'type': 'pooling', 'stride': 2},
+                        {'type': 'batch_norm', 'activation': None},
                         {'type': 'flatten'},
                         {'type': 'fc', 'out_parameters': 512, 'activation': 'relu'},
                         {'type': 'fc', 'out_parameters': 128, 'activation': 'relu'},
                         {'type': 'fc_layers', 'out_parameters': 6, 'activation': 'relu'},
                         {'type': 'fc_layers', 'out_parameters': 6, 'activation': None},
                     ],
-                'weight_scaling': 0.3,
+                'weight_scaling': 0.15,
             },
 
     }

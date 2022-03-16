@@ -76,9 +76,9 @@
         "Left Palm",
         "Left Arm",
         "Left Shoulder",
-        "Right Palm",
+        "Right Shoulder",
         "Right Arm",
-        "Right Shoulder"
+        "Right Palm"        
     ],
     "image_size": 128,
     "layers_info": {

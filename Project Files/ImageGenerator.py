@@ -152,10 +152,12 @@ class BodyPart:
             joint_rotation = parent.rotation
             center = parent.position + translation
             dist_from_parent = dist_from_parent * parent.scaling
-            scaling.x = np.min([np.max([scaling.x * parent.scaling.x, config['dataset']['scaling_range'][0]]),
-                              config['dataset']['scaling_range'][1]])
-            scaling.y = np.min([np.max([scaling.y * parent.scaling.y, config['dataset']['scaling_range'][0]]),
-                              config['dataset']['scaling_range'][1]])
+            # scaling.x = scaling.x / parent.scaling.x
+            # scaling.y = scaling.y / parent.scaling.y
+            # scaling.x = np.min([np.max([scaling.x * parent.scaling.x, config['dataset']['scaling_range'][0]]),
+            #                   config['dataset']['scaling_range'][1]])
+            # scaling.y = np.min([np.max([scaling.y * parent.scaling.y, config['dataset']['scaling_range'][0]]),
+            #                   config['dataset']['scaling_range'][1]])
         # create_affine_transform(math.radians(inner_rotation), Vector2D(), dist_from_parent, Vector2D(x_scaling, y_scaling),
         #                         name, True, self.im.size[0])  # TODO: This is just to generate initial transformations
         self.position = rotate(center, center + dist_from_parent, -joint_rotation)
@@ -292,12 +294,12 @@ def create_image(character, parameters, draw_skeleton=False, print_dict=False, a
         transform_matrix = transformations.get(part, np.array([1, 0, 0, 0, 1, 0]))
         matrix_list.append(transform_matrix)
 
-    if random_order:
-        rand_int = np.random.randint(config['dataset']['max_layer_swaps'])
-        for rand in range(rand_int):
-            i = np.random.randint(len(drawing_order) - 1)
-            j = np.random.randint(len(drawing_order) - 1)
-            drawing_order[j], drawing_order[i] = drawing_order[i], drawing_order[j]
+    # if random_order:
+    #     rand_int = np.random.randint(config['dataset']['max_layer_swaps'])
+    #     for rand in range(rand_int):
+    #         i = np.random.randint(len(drawing_order) - 1)
+    #         j = np.random.randint(len(drawing_order) - 1)
+    #         drawing_order[j], drawing_order[i] = drawing_order[i], drawing_order[j]
 
     for part in drawing_order:
         alpha = ImageOps.invert(layers[part].split()[-1])
@@ -312,6 +314,17 @@ def create_body_hierarchy(parameters, character):
             angles[i] += character.sample_params[i]
         # parameters[0] = [0, 0, 50, 60, 0, -10, 60, 60, -5, 10, -30, -30, 30, -30]  # TODO: Always comment out when starting
         parameters = parameters.transpose()
+        new_params = np.array([0, 1, 1, 0, 0] * len(character.char_tree_array), dtype=float).\
+            reshape((len(character.char_tree_array), 5))
+        new_params[2] = parameters[2]
+        new_params[3] = parameters[3]
+        new_params[4] = parameters[4]
+        new_params[5] = parameters[5]
+        new_params[6] = parameters[6]
+        new_params[7] = parameters[7]
+        new_params[8] = parameters[8]
+        new_params[9] = parameters[9]
+        parameters = new_params
     else:
         parameters = np.array([0, 1, 1, 0, 0] * len(character.char_tree_array)).\
             reshape((len(character.char_tree_array), 5))
