@@ -316,14 +316,32 @@ def create_body_hierarchy(parameters, character):
         parameters = parameters.transpose()
         new_params = np.array([0, 1, 1, 0, 0] * len(character.char_tree_array), dtype=float).\
             reshape((len(character.char_tree_array), 5))
+        l4 = [0, 10, 12]
+        l5 = [0, -10, -12]
+        l8 = [0, -8]
+        l9 = [0, 12]
+        l10 = [0, -80]
+        l11 = [0, -80]
         new_params[2] = parameters[2]
         new_params[3] = parameters[3]
-        new_params[4] = parameters[4]
-        new_params[5] = parameters[5]
+        new_params[4][0] = l4[np.random.randint(3)]
+        new_params[4][2] = 1
+        new_params[5][0] = l5[np.random.randint(3)]
+        new_params[5][2] = 1
         new_params[6] = parameters[6]
         new_params[7] = parameters[7]
-        new_params[8] = parameters[8]
-        new_params[9] = parameters[9]
+        new_params[8][0] = l8[np.random.randint(2)]
+        new_params[8][1] = 1.1
+        new_params[8][2] = 1.3
+        new_params[9][0] = l9[np.random.randint(2)]
+        new_params[9][2] = 1.4
+        new_params[10][0] = l10[np.random.randint(2)]
+        new_params[11][0] = l11[np.random.randint(2)]
+        new_params[12][0] = 15
+        new_params[12][1] = 1.5
+        new_params[12][2] = 0.8
+        new_params[13][0] = -10
+        new_params[13][1] = 1.3
         parameters = new_params
     else:
         parameters = np.array([0, 1, 1, 0, 0] * len(character.char_tree_array)).\

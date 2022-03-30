@@ -11,6 +11,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import kornia.filters
+from torch.optim.lr_scheduler import ExponentialLR
 
 import DataModule
 import ImageGenerator
@@ -210,7 +211,9 @@ def train():
                                          blur=kornia.filters.GaussianBlur2d((5, 5), (3, 3), 'replicate').to(device),
                                          colored=True)
     canonical = create_canonical(ImageGenerator.char)
-    optimizer = optim.Adam(net.parameters(), lr=training_conf['lr'], weight_decay=training_conf['decay'])
+    lr = training_conf['lr']
+    optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=training_conf['decay'])
+    scheduler = ExponentialLR(optimizer, gamma=training_conf['gamma'])
     num_iter_to_print = config['inspection']['num_iter_to_print']
     iterations = []
     test_losses = []
@@ -239,7 +242,6 @@ def train():
             save_losses_graphs(colors, iterations, losses_array, path)
             losses_array = []
             iterations = []
-            optimizer = optim.Adam(net.parameters(), lr=training_conf['lr'])
 
         noise_scale = config['transformation']['noise'][0] + \
             (((epoch + 1) / training_conf['epochs'])
@@ -286,6 +288,7 @@ def train():
         #     losses_array = []
         #     iterations = []
         #     optimizer = optim.Adam(net.parameters(), lr=training_conf['lr'])
+        scheduler.step()
         test_loss = test(net, path)
         print("test loss epoch %d = %.9f" % (epoch + 1, test_loss))
         test_losses.append(test_loss)

@@ -5,26 +5,27 @@ config = \
         'dirs':
             {
                 'source_dir': str(Path(__file__).resolve().parent) + '\\',
-                'comment': 'checking only hands'
+                'comment': 'Aang hands all poses'
             },
 
         'dataset':
             {
                 'character': 'Aang2',
-                'name': 'Aang limbs',
+                'name': 'Aang hands all poses',
                 'batch_size': 16,
-                'samples_num': 50000 * 0.8,
-                'test_samples_num': 50000 * 0.2,
+                'samples_num': 20000 * 0.8,
+                'test_samples_num': 1000 * 0.2,
                 'angle_range': 120,
-                'scaling_range': [0.7, 1.5],
+                'scaling_range': [0.5, 2],
                 'translation_range': [-2, 2],
                 'max_layer_swaps': 2,
             },
 
         'training':
             {
-                'lr': 1e-5,
-                'decay': 1e-6,
+                'lr': 1e-04,
+                'decay': 0,
+                'gamma': 0.9,
                 'epochs': 15,
                 'supervised_loss': 1.0,
                 'base_model': None,
@@ -33,13 +34,13 @@ config = \
         'transformation':
             {
                 'noise': [0.2, 0.2],
-                'blur_kernels': [5, 5],
-                'blur_kernels_sigmas': [3, 3],
+                'blur_kernels': [7, 7],
+                'blur_kernels_sigmas': [5, 5],
             },
 
         'inspection':
             {
-                'num_iter_to_print': 50,
+                'num_iter_to_print': 25,
             },
 
         'network':
