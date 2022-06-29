@@ -3,14 +3,14 @@ DATA_DIR: ''
 OUTPUT_DIR: 'output'
 LOG_DIR: 'log'
 WORKERS: 4
-PRINT_FREQ: 100
+PRINT_FREQ: 20
 CUDNN:
   BENCHMARK: True
   DETERMINISTIC: False
   ENABLED: True
 DATASET:
   DATASET: mpii
-  ROOT: 'data/mpii/'
+  ROOT: 'C:/School/Huji/Thesis/Pose_Estimation_in_2D_Characters/data/mpii/'
   TEST_SET: valid
   TRAIN_SET: train
   FLIP: true
@@ -18,7 +18,7 @@ DATASET:
   SCALE_FACTOR: 0.25
 MODEL:
   NAME: pose_resnet
-  PRETRAINED: 'models/pytorch/imagenet/resnet101-5d3b4d8f.pth'
+  PRETRAINED: ''
   IMAGE_SIZE:
   - 256
   - 256
@@ -65,7 +65,7 @@ TEST:
   FLIP_TEST: false
   MODEL_FILE: ''
 DEBUG:
-  DEBUG: false
+  DEBUG: true
   SAVE_BATCH_IMAGES_GT: true
   SAVE_BATCH_IMAGES_PRED: true
   SAVE_HEATMAPS_GT: true

@@ -1,8 +1,9 @@
-# ------------------------------------------------------------------------------
-# Copyright (c) Microsoft
-# Licensed under the MIT License.
-# Modified from py-faster-rcnn (https://github.com/rbgirshick/py-faster-rcnn)
-# ------------------------------------------------------------------------------
+# --------------------------------------------------------
+# Fast R-CNN
+# Copyright (c) 2015 Microsoft
+# Licensed under The MIT License [see LICENSE for details]
+# Written by Ross Girshick
+# --------------------------------------------------------
 
 import numpy as np
 cimport numpy as np
@@ -21,7 +22,8 @@ def cpu_nms(np.ndarray[np.float32_t, ndim=2] dets, np.float thresh):
     cdef np.ndarray[np.float32_t, ndim=1] scores = dets[:, 4]
 
     cdef np.ndarray[np.float32_t, ndim=1] areas = (x2 - x1 + 1) * (y2 - y1 + 1)
-    cdef np.ndarray[np.int_t, ndim=1] order = scores.argsort()[::-1].astype('i')
+    #cdef np.ndarray[np.int_t, ndim=1] order = scores.argsort()[::-1]  #20160531, by MrX
+    cdef np.ndarray[np.intp_t, ndim=1] order = scores.argsort()[::-1]
 
     cdef int ndets = dets.shape[0]
     cdef np.ndarray[np.int_t, ndim=1] suppressed = \

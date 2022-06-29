@@ -12,6 +12,7 @@ import argparse
 import os
 import pprint
 import shutil
+from datetime import datetime
 
 import torch
 import torch.nn.parallel
@@ -125,9 +126,17 @@ def main():
         optimizer, config.TRAIN.LR_STEP, config.TRAIN.LR_FACTOR
     )
 
+
     # Data loading code
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
+
+    transformations_sequence = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.GaussianBlur(3, (3, 3)),
+            transforms.ColorJitter(0.2, 0.2, 0.2, 0.2),
+            normalize,
+        ])
     train_dataset = eval('dataset.'+config.DATASET.DATASET)(
         config,
         config.DATASET.ROOT,
@@ -135,6 +144,8 @@ def main():
         True,
         transforms.Compose([
             transforms.ToTensor(),
+            transforms.GaussianBlur(3, (3, 3)),
+            transforms.ColorJitter(0.2, 0.2, 0.2, 0.2),
             normalize,
         ])
     )
@@ -145,6 +156,7 @@ def main():
         False,
         transforms.Compose([
             transforms.ToTensor(),
+            transforms.GaussianBlur(3, (3, 3)),
             normalize,
         ])
     )
@@ -166,6 +178,8 @@ def main():
 
     best_perf = 0.0
     best_model = False
+    current_time = datetime.now()
+    session = current_time.strftime("%S-%M-%H %d-%m-%Y")
     for epoch in range(config.TRAIN.BEGIN_EPOCH, config.TRAIN.END_EPOCH):
         lr_scheduler.step()
 
@@ -177,13 +191,15 @@ def main():
         # evaluate on validation set
         perf_indicator = validate(config, valid_loader, valid_dataset, model,
                                   criterion, final_output_dir, tb_log_dir,
-                                  writer_dict)
+                                  writer_dict, val_file=session, prefix=f"epoch_{epoch}")
 
-        if perf_indicator > best_perf:
-            best_perf = perf_indicator
-            best_model = True
-        else:
-            best_model = False
+        #TODO: maybe check this later
+        # if perf_indicator > best_perf:
+        #     best_perf = perf_indicator
+        #     best_model = True
+        # else:
+        #     best_model = False
+        best_model = True
 
         logger.info('=> saving checkpoint to {}'.format(final_output_dir))
         save_checkpoint({

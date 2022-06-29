@@ -81,33 +81,6 @@ class Net(nn.Module):
             print(f"{curr_im_size=}")
             print(f"{parameters=}")
 
-        # k1, k2, k3, k4 = config['network']['kernels']
-        # s1, s2, s3, s4 = config['network']['strides']
-        # n_out1 = ((character.image_size - k1) / s1) + 1
-        # n_out2 = (((n_out1 - k2) // s2) + 1) // 2
-        # n_out3 = (((n_out2 - k3) // s3) + 1) // 2
-        # n_out4 = (((n_out3 - k4) // s4) + 1) // 2
-        # print(f"{n_out1=}")
-        # print(f"{n_out2=}")
-        # print(f"{n_out3=}")
-        # print(f"{n_out4=}")
-        # self.conv1 = nn.Conv2d(4, 32, k1, s1)
-        # self.conv2 = nn.Conv2d(32, 64, k2, s2)
-        # self.conv3 = nn.Conv2d(64, 64, k3, s3)
-        # self.conv4 = nn.Conv2d(64, 64, k4, s4)
-        # self.fc1 = nn.Linear(int(64 * n_out4 * n_out4), 512)
-        # self.fc2 = nn.Linear(512, 6 * self.num_layers)
-        # self.fc3 = nn.Linear(6 * self.num_layers, 6 * self.num_layers)
-        # self.fc4 = nn.Linear(6 * self.num_layers, 6 * self.num_layers)
-        # torch.nn.init.xavier_uniform_(self.conv1.weight, config['network']['weight_scaling'])
-        # torch.nn.init.xavier_uniform_(self.conv2.weight, config['network']['weight_scaling'])
-        # torch.nn.init.xavier_uniform_(self.conv3.weight, config['network']['weight_scaling'])
-        # torch.nn.init.xavier_uniform_(self.conv4.weight, config['network']['weight_scaling'])
-        # torch.nn.init.xavier_uniform_(self.fc1.weight, config['network']['weight_scaling'])
-        # torch.nn.init.xavier_uniform_(self.fc2.weight, config['network']['weight_scaling'])
-        # torch.nn.init.xavier_uniform_(self.fc3.weight, config['network']['weight_scaling'])
-        # torch.nn.init.xavier_uniform_(self.fc4.weight, config['network']['weight_scaling'])
-
     def localization(self, x):
         for layer_dict in self.layers:
             if layer_dict['layer'] is not None:
@@ -119,16 +92,6 @@ class Net(nn.Module):
                 x = F.max_pool2d(x, (layer_dict['stride'], layer_dict['stride']))
             elif layer_dict['type'] == 'flatten':
                 x = torch.flatten(x, start_dim=1)
-        # x = F.relu(self.conv1(x))
-        # x = F.max_pool2d(F.relu(self.conv2(x)), (2, 2))
-        # x = F.max_pool2d(F.relu(self.conv3(x)), (2, 2))
-        # x = F.max_pool2d(F.relu(self.conv4(x)), (2, 2))
-        # # x = F.max_pool2d(F.relu(self.conv4(x)), (2, 2))
-        # x = torch.flatten(x, start_dim=1)
-        # x = F.relu(self.fc1(x))
-        # x = F.relu(self.fc2(x))
-        # x = F.relu(self.fc3(x))
-        # x = self.fc4(x)
         return x
 
     # Spatial transformer network forward function

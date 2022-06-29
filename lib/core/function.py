@@ -11,6 +11,7 @@ from __future__ import print_function
 import logging
 import time
 import os
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -82,12 +83,12 @@ def train(config, train_loader, model, criterion, optimizer, epoch,
             writer_dict['train_global_steps'] = global_steps + 1
 
             prefix = '{}_{}'.format(os.path.join(output_dir, 'train'), i)
-            save_debug_images(config, input, meta, target, pred*4, output,
+            save_debug_images(config, input, meta, target, pred*2, output,
                               prefix)
 
 
 def validate(config, val_loader, val_dataset, model, criterion, output_dir,
-             tb_log_dir, writer_dict=None):
+             tb_log_dir, writer_dict=None, val_file='val_file', prefix=''):
     batch_time = AverageMeter()
     losses = AverageMeter()
     acc = AverageMeter()
@@ -172,9 +173,13 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
                           i, len(val_loader), batch_time=batch_time,
                           loss=losses, acc=acc)
                 logger.info(msg)
-
-                prefix = '{}_{}'.format(os.path.join(output_dir, 'val'), i)
-                save_debug_images(config, input, meta, target, pred*4, output,
+                val_file = os.path.join(output_dir, 'val', val_file)
+                val_path = Path(val_file)
+                if not val_path.exists():
+                    print('=> creating {}'.format(val_path))
+                    val_path.mkdir(parents=True)
+                prefix = f"{os.path.join(val_path, prefix)}_iter_{i}"
+                save_debug_images(config, input, meta, target, pred*2, output,
                                   prefix)
 
         name_values, perf_indicator = val_dataset.evaluate(

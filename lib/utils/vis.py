@@ -18,7 +18,7 @@ from core.inference import get_max_preds
 
 
 def save_batch_image_with_joints(batch_image, batch_joints, batch_joints_vis,
-                                 file_name, nrow=8, padding=2):
+                                 file_name, parents, nrow=8, padding=2):
     '''
     batch_image: [batch_size, channel, height, width]
     batch_joints: [batch_size, num_joints, 3],
@@ -41,13 +41,35 @@ def save_batch_image_with_joints(batch_image, batch_joints, batch_joints_vis,
                 break
             joints = batch_joints[k]
             joints_vis = batch_joints_vis[k]
-
-            for joint, joint_vis in zip(joints, joints_vis):
+            for joint in joints:
                 joint[0] = x * width + padding + joint[0]
                 joint[1] = y * height + padding + joint[1]
+            for joint_idx, parent_idx in enumerate(parents):
+                joint = joints[joint_idx]
+                joint_vis = joints_vis[joint_idx]
                 if joint_vis[0]:
-                    cv2.circle(ndarr, (int(joint[0]), int(joint[1])), 2, [255, 0, 0], 2)
+                    if parent_idx >= 0:
+                        joint_parent = joints[parent_idx]
+                        joint_parent_vis = joints_vis[parent_idx]
+                        if joint_parent_vis[0]:
+                            cv2.line(ndarr, (int(joint[0]), int(joint[1])),
+                                     (int(joint_parent[0]), int(joint_parent[1])),
+                                     [255, 255, 0], 1)
             k = k + 1
+    # k = 0
+    # for y in range(ymaps):
+    #     for x in range(xmaps):
+    #         if k >= nmaps:
+    #             break
+    #         joints = batch_joints[k]
+    #         joints_vis = batch_joints_vis[k]
+    #
+    #         for joint, joint_vis in zip(joints, joints_vis):
+    #             joint[0] = x * width + padding + joint[0]
+    #             joint[1] = y * height + padding + joint[1]
+    #             if joint_vis[0]:
+    #                 cv2.circle(ndarr, (int(joint[0]), int(joint[1])), 1, [255, 0, 0], 2)
+    #         k = k + 1
     cv2.imwrite(file_name, ndarr)
 
 
@@ -124,12 +146,14 @@ def save_debug_images(config, input, meta, target, joints_pred, output,
     if config.DEBUG.SAVE_BATCH_IMAGES_GT:
         save_batch_image_with_joints(
             input, meta['joints'], meta['joints_vis'],
-            '{}_gt.jpg'.format(prefix)
+            '{}_gt.jpg'.format(prefix),
+            config.MODEL.PARENTS
         )
     if config.DEBUG.SAVE_BATCH_IMAGES_PRED:
         save_batch_image_with_joints(
             input, joints_pred, meta['joints_vis'],
-            '{}_pred.jpg'.format(prefix)
+            '{}_pred.jpg'.format(prefix),
+            config.MODEL.PARENTS
         )
     if config.DEBUG.SAVE_HEATMAPS_GT:
         save_batch_heatmaps(

@@ -49,12 +49,12 @@ MODEL_EXTRAS = {
 # common params for NETWORK
 config.MODEL = edict()
 config.MODEL.NAME = 'pose_resnet'
-config.MODEL.INIT_WEIGHTS = True
+config.MODEL.INIT_WEIGHTS = False
 config.MODEL.PRETRAINED = ''
 config.MODEL.NUM_JOINTS = 16
 config.MODEL.IMAGE_SIZE = [256, 256]  # width * height, ex: 192 * 256
+config.MODEL.PARENTS = []
 config.MODEL.EXTRA = MODEL_EXTRAS[config.MODEL.NAME]
-
 config.MODEL.STYLE = 'pytorch'
 
 config.LOSS = edict()
@@ -63,10 +63,10 @@ config.LOSS.USE_TARGET_WEIGHT = True
 # DATASET related params
 config.DATASET = edict()
 config.DATASET.ROOT = ''
-config.DATASET.DATASET = 'mpii'
+config.DATASET.DATASET = 'aang'
 config.DATASET.TRAIN_SET = 'train'
 config.DATASET.TEST_SET = 'valid'
-config.DATASET.DATA_FORMAT = 'jpg'
+config.DATASET.DATA_FORMAT = 'png'
 config.DATASET.HYBRID_JOINTS_TYPE = ''
 config.DATASET.SELECT_DATA = False
 
@@ -95,14 +95,14 @@ config.TRAIN.END_EPOCH = 140
 config.TRAIN.RESUME = False
 config.TRAIN.CHECKPOINT = ''
 
-config.TRAIN.BATCH_SIZE = 32
+config.TRAIN.BATCH_SIZE = 16
 config.TRAIN.SHUFFLE = True
 
 # testing
 config.TEST = edict()
 
 # size of images for each device
-config.TEST.BATCH_SIZE = 32
+config.TEST.BATCH_SIZE = 16
 # Test Model Epoch
 config.TEST.FLIP_TEST = False
 config.TEST.POST_PROCESS = True
@@ -120,11 +120,11 @@ config.TEST.NMS_THRE = 1.0
 
 # debug
 config.DEBUG = edict()
-config.DEBUG.DEBUG = False
-config.DEBUG.SAVE_BATCH_IMAGES_GT = False
-config.DEBUG.SAVE_BATCH_IMAGES_PRED = False
-config.DEBUG.SAVE_HEATMAPS_GT = False
-config.DEBUG.SAVE_HEATMAPS_PRED = False
+config.DEBUG.DEBUG = True
+config.DEBUG.SAVE_BATCH_IMAGES_GT = True
+config.DEBUG.SAVE_BATCH_IMAGES_PRED = True
+config.DEBUG.SAVE_HEATMAPS_GT = True
+config.DEBUG.SAVE_HEATMAPS_PRED = True
 
 
 def _update_dict(k, v):
@@ -158,7 +158,7 @@ def _update_dict(k, v):
 def update_config(config_file):
     exp_config = None
     with open(config_file) as f:
-        exp_config = edict(yaml.load(f))
+        exp_config = edict(yaml.safe_load(f))
         for k, v in exp_config.items():
             if k in config:
                 if isinstance(v, dict):

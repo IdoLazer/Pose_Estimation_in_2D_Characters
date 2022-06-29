@@ -1,7 +1,8 @@
 // ------------------------------------------------------------------
-// Copyright (c) Microsoft
-// Licensed under The MIT License
-// Modified from MATLAB Faster R-CNN (https://github.com/shaoqingren/faster_rcnn)
+// Faster R-CNN
+// Copyright (c) 2015 Microsoft
+// Licensed under The MIT License [see fast-rcnn/LICENSE for details]
+// Written by Shaoqing Ren
 // ------------------------------------------------------------------
 
 #include "gpu_nms.hpp"
@@ -87,7 +88,7 @@ void _set_device(int device_id) {
   CUDA_CHECK(cudaSetDevice(device_id));
 }
 
-void _nms(int* keep_out, int* num_out, const float* boxes_host, int boxes_num,
+void _nms(long* keep_out, int* num_out, const float* boxes_host, int boxes_num,
           int boxes_dim, float nms_overlap_thresh, int device_id) {
   _set_device(device_id);
 

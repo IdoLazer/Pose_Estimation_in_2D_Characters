@@ -112,3 +112,5 @@ venv.bak/
 /output
 /models
 /log
+/pose_estimation/log
+/pose_estimation/output

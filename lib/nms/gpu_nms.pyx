@@ -1,8 +1,9 @@
-# ------------------------------------------------------------------------------
-# Copyright (c) Microsoft
-# Licensed under the MIT License.
-# Modified from py-faster-rcnn (https://github.com/rbgirshick/py-faster-rcnn)
-# ------------------------------------------------------------------------------
+# --------------------------------------------------------
+# Faster R-CNN
+# Copyright (c) 2015 Microsoft
+# Licensed under The MIT License [see LICENSE for details]
+# Written by Ross Girshick
+# --------------------------------------------------------
 
 import numpy as np
 cimport numpy as np
@@ -21,8 +22,10 @@ def gpu_nms(np.ndarray[np.float32_t, ndim=2] dets, np.float thresh,
         keep = np.zeros(boxes_num, dtype=np.int32)
     cdef np.ndarray[np.float32_t, ndim=1] \
         scores = dets[:, 4]
-    cdef np.ndarray[np.int32_t, ndim=1] \
-        order = scores.argsort()[::-1].astype(np.int32)
+    #cdef np.ndarray[np.int_t, ndim=1] \  // 20160601, by MrX
+    #    order = scores.argsort()[::-1]
+    cdef np.ndarray[np.intp_t, ndim=1] \
+        order = scores.argsort()[::-1]
     cdef np.ndarray[np.float32_t, ndim=2] \
         sorted_dets = dets[order, :]
     _nms(&keep[0], &num_out, &sorted_dets[0, 0], boxes_num, boxes_dim, thresh, device_id)

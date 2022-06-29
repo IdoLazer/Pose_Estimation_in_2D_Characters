@@ -8,6 +8,8 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import numpy as np
 from tqdm import tqdm
+import json_tricks as json
+from pathlib import Path
 
 import ImageGenerator
 from Config import config
@@ -83,40 +85,63 @@ def generate_parameters(num_layers, samples_num, angle_range=None, scaling_range
 def save_image_batch(images, labels, start_idx, annotations, output_path):
     for idx, (image, label) in enumerate(zip(images, labels)):
         name = f"pose{start_idx + idx}.png"
-        annotations[name] = label
-        image.save(f"{output_path}\\{name}")
+        label["image"] = name
+        annotations.append(label)
+        image.save(f"{output_path}new_images\\{name}")
 
 
 def forge_new_dataset(samples=1000, num_samples_to_save=1000):
     angle_range = config['dataset']['angle_range']
     scaling_range = config['dataset']['scaling_range']
     translation_range = config['dataset']['translation_range']
-    output_path = f"{config['dirs']['source_dir']}Data\\{config['dataset']['character']}\\" \
-                  f"{samples=} {angle_range=}"
+    output_path = f"{Path(__file__).resolve().parent.parent}\\data\\aang\\"
     num_layers = len(ImageGenerator.char.char_tree_array)
 
     try:
         os.makedirs(output_path)
     except OSError:
         print("Creation of the directory %s failed" % output_path)
-    annotations = dict()
-    labels = generate_parameters(num_layers, samples, angle_range, scaling_range, translation_range)
+    try:
+        os.makedirs(f"{output_path}new_images\\")
+    except OSError:
+        print(f"Creation of the directory {output_path}images\\ failed")
+    try:
+        os.makedirs(f"{output_path}annot\\")
+    except OSError:
+        print(f"Creation of the directory {output_path}annot\\ failed")
+    train_annotations = []
+    test_annotations = []
+    train_parameters = generate_parameters(num_layers, int(samples * 0.8), angle_range, scaling_range, translation_range)
+    test_parameters = generate_parameters(num_layers, int(samples * 0.2), angle_range, scaling_range, translation_range)
     forged_images = []
-    all_matrices = []
-    for index in tqdm(range(len(labels))):
-        parameters = labels[index]
-        im, matrices = ImageGenerator.create_image(ImageGenerator.char, parameters, draw_skeleton=False,
+    batch_annotations = []
+    for index in tqdm(range(len(train_parameters))):
+        im_parameters = train_parameters[index]
+        idx = np.random.randint(2)
+        char = ImageGenerator.char if idx == 0 else ImageGenerator.char_side
+        im, annotations = ImageGenerator.create_image(char, im_parameters, draw_skeleton=False,
                                                    print_dict=False, as_image=True)
         forged_images.append(im)
-        all_matrices.append(matrices)
+        batch_annotations.append(annotations)
         if index % num_samples_to_save == num_samples_to_save - 1:
-            save_image_batch(forged_images, all_matrices, index - num_samples_to_save + 1, annotations, output_path)
+            save_image_batch(forged_images, batch_annotations, index - num_samples_to_save + 1, train_annotations, output_path)
             forged_images = []
-            all_matrices = []
-    df = pd.DataFrame.from_dict(annotations)
-    df.to_pickle(f"{output_path}\\annotations.pkl")
+            batch_annotations = []
+    json.dump(train_annotations, f"{output_path}annot\\train.json")
+
+    for index in tqdm(range(len(test_parameters))):
+        im_parameters = test_parameters[index]
+        im, annotations = ImageGenerator.create_image(ImageGenerator.char, im_parameters, draw_skeleton=False,
+                                                   print_dict=False, as_image=True)
+        forged_images.append(im)
+        batch_annotations.append(annotations)
+        if index % num_samples_to_save == num_samples_to_save - 1:
+            save_image_batch(forged_images, batch_annotations, index - num_samples_to_save + 1 + int(samples * 0.8), test_annotations, output_path)
+            forged_images = []
+            batch_annotations = []
+    json.dump(test_annotations, f"{output_path}annot\\valid.json")
 
 
 if __name__ == "__main__":
-    forge_new_dataset(samples=20000, num_samples_to_save=1000)
+    forge_new_dataset(samples=100000, num_samples_to_save=1000)
 

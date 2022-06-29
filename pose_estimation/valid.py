@@ -120,7 +120,9 @@ def main():
 
     if config.TEST.MODEL_FILE:
         logger.info('=> loading model from {}'.format(config.TEST.MODEL_FILE))
-        model.load_state_dict(torch.load(config.TEST.MODEL_FILE))
+        state_dict = torch.load(config.TEST.MODEL_FILE)
+        new_state_dict = {'.'.join(k.split('.')[1:]): state_dict[k] for k in state_dict}
+        model.load_state_dict(new_state_dict)
     else:
         model_state_file = os.path.join(final_output_dir,
                                         'final_state.pth.tar')

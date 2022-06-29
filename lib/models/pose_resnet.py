@@ -298,7 +298,8 @@ class PoseResNet(nn.Module):
             raise ValueError('imagenet pretrained model does not exist')
 
 
-resnet_spec = {18: (BasicBlock, [2, 2, 2, 2]),
+resnet_spec = {16: (BasicBlock, [2, 2, 2, 2]),
+               18: (BasicBlock, [2, 2, 2, 2]),
                34: (BasicBlock, [3, 4, 6, 3]),
                50: (Bottleneck, [3, 4, 6, 3]),
                101: (Bottleneck, [3, 4, 23, 3]),
