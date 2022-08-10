@@ -131,12 +131,6 @@ def main():
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
 
-    transformations_sequence = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.GaussianBlur(3, (3, 3)),
-            transforms.ColorJitter(0.2, 0.2, 0.2, 0.2),
-            normalize,
-        ])
     train_dataset = eval('dataset.'+config.DATASET.DATASET)(
         config,
         config.DATASET.ROOT,
@@ -202,13 +196,13 @@ def main():
         best_model = True
 
         logger.info('=> saving checkpoint to {}'.format(final_output_dir))
-        save_checkpoint({
-            'epoch': epoch + 1,
-            'model': get_model_name(config),
-            'state_dict': model.state_dict(),
-            'perf': perf_indicator,
-            'optimizer': optimizer.state_dict(),
-        }, best_model, final_output_dir)
+        # save_checkpoint({
+        #     'epoch': epoch + 1,
+        #     'model': get_model_name(config),
+        #     'state_dict': model.state_dict(),
+        #     'perf': perf_indicator,
+        #     'optimizer': optimizer.state_dict(),
+        # }, best_model, final_output_dir)
 
     final_model_state_file = os.path.join(final_output_dir,
                                           'final_state.pth.tar')

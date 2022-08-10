@@ -10,7 +10,7 @@ from __future__ import print_function
 
 import numpy as np
 
-from core.inference import get_max_preds
+from core.inference import get_max_preds, get_max_preds_with_pafs
 
 
 def calc_dists(preds, target, normalize):
@@ -38,20 +38,23 @@ def dist_acc(dists, thr=0.5):
         return -1
 
 
-def accuracy(output, target, hm_type='gaussian', thr=0.5):
+# def accuracy(output_hm, output_paf, target_hm, target_paf, limbs, hm_type='gaussian', thr=0.5):
+def accuracy(output_hm, target_hm, hm_type='gaussian', thr=0.5):
     '''
     Calculate accuracy according to PCK,
     but uses ground truth heatmap rather than x,y locations
     First value to be returned is average accuracy across 'idxs',
     followed by individual accuracies
     '''
-    idx = list(range(output.shape[1]))
+    idx = list(range(output_hm.shape[1]))
     norm = 1.0
     if hm_type == 'gaussian':
-        pred, _ = get_max_preds(output)
-        target, _ = get_max_preds(target)
-        h = output.shape[2]
-        w = output.shape[3]
+        pred, _ = get_max_preds(output_hm)
+        target, _ = get_max_preds(target_hm)
+        # pred, _ = get_max_preds_with_pafs(output_hm, output_paf, 3, limbs)
+        # target, _ = get_max_preds_with_pafs(target_hm, target_paf, 3, limbs)
+        h = output_hm.shape[2]
+        w = output_hm.shape[3]
         norm = np.ones((pred.shape[0], 2)) * np.array([h, w]) / 10
     dists = calc_dists(pred, target, norm)
 

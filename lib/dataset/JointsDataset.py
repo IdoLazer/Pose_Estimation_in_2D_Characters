@@ -21,6 +21,12 @@ from utils.transforms import get_affine_transform
 from utils.transforms import affine_transform
 from utils.transforms import fliplr_joints
 
+# from transforms import get_affine_transform
+# from transforms import affine_transform
+# from transforms import fliplr_joints
+
+
+from scipy.ndimage import binary_fill_holes as imfill
 
 logger = logging.getLogger(__name__)
 
@@ -114,10 +120,17 @@ class JointsDataset(Dataset):
             if joints_vis[i, 0] > 0.0:
                 joints[i, 0:2] = affine_transform(joints[i, 0:2], trans)
 
-        target, target_weight = self.generate_target(joints, joints_vis)
+        hm_target, hm_target_weight = self.generate_target(joints, joints_vis, self.image_size, self.heatmap_size,
+                                                           self.sigma)
 
-        target = torch.from_numpy(target)
-        target_weight = torch.from_numpy(target_weight)
+        hm_target = torch.from_numpy(hm_target)
+        hm_target_weight = torch.from_numpy(hm_target_weight)
+
+        limbs = db_rec['limbs']
+        paf_target, paf_target_weight = self.generate_paf(joints, limbs, 6, self.image_size, self.heatmap_size)
+
+        paf_target = torch.from_numpy(paf_target)
+        paf_target_weight = torch.from_numpy(paf_target_weight)
 
         meta = {
             'image': image_file,
@@ -128,10 +141,11 @@ class JointsDataset(Dataset):
             'center': c,
             'scale': s,
             'rotation': r,
-            'score': score
+            'score': score,
+            'limbs': limbs,
         }
 
-        return input, target, target_weight, meta
+        return input, hm_target, hm_target_weight, paf_target, paf_target_weight, meta
 
     def select_data(self, db):
         db_selected = []
@@ -166,57 +180,98 @@ class JointsDataset(Dataset):
         logger.info('=> num selected db: {}'.format(len(db_selected)))
         return db_selected
 
-    def generate_target(self, joints, joints_vis):
+    @staticmethod
+    def generate_target(joints, joints_vis, image_size, heatmap_size, sigma):
         '''
         :param joints:  [num_joints, 3]
         :param joints_vis: [num_joints, 3]
         :return: target, target_weight(1: visible, 0: invisible)
         '''
-        target_weight = np.ones((self.num_joints, 1), dtype=np.float32)
+        num_joints = len(joints)
+        target_weight = np.ones((num_joints, 1), dtype=np.float32)
         target_weight[:, 0] = joints_vis[:, 0]
 
-        assert self.target_type == 'gaussian', \
-            'Only support gaussian map now!'
+        target = np.zeros((num_joints,
+                           heatmap_size[1],
+                           heatmap_size[0]),
+                          dtype=np.float32)
 
-        if self.target_type == 'gaussian':
-            target = np.zeros((self.num_joints,
-                               self.heatmap_size[1],
-                               self.heatmap_size[0]),
-                              dtype=np.float32)
+        tmp_size = sigma * 3
 
-            tmp_size = self.sigma * 3
+        for joint_id in range(num_joints):
+            feat_stride = image_size / heatmap_size
+            mu_x = int(joints[joint_id][0] / feat_stride[0] + 0.5)
+            mu_y = int(joints[joint_id][1] / feat_stride[1] + 0.5)
+            # Check that any part of the gaussian is in-bounds
+            ul = [int(mu_x - tmp_size), int(mu_y - tmp_size)]
+            br = [int(mu_x + tmp_size + 1), int(mu_y + tmp_size + 1)]
+            if ul[0] >= heatmap_size[0] or ul[1] >= heatmap_size[1] \
+                    or br[0] < 0 or br[1] < 0:
+                # If not, just return the image as is
+                target_weight[joint_id] = 0
+                continue
 
-            for joint_id in range(self.num_joints):
-                feat_stride = self.image_size / self.heatmap_size
-                mu_x = int(joints[joint_id][0] / feat_stride[0] + 0.5)
-                mu_y = int(joints[joint_id][1] / feat_stride[1] + 0.5)
-                # Check that any part of the gaussian is in-bounds
-                ul = [int(mu_x - tmp_size), int(mu_y - tmp_size)]
-                br = [int(mu_x + tmp_size + 1), int(mu_y + tmp_size + 1)]
-                if ul[0] >= self.heatmap_size[0] or ul[1] >= self.heatmap_size[1] \
-                        or br[0] < 0 or br[1] < 0:
-                    # If not, just return the image as is
-                    target_weight[joint_id] = 0
-                    continue
+            # # Generate gaussian
+            size = 2 * tmp_size + 1
+            x = np.arange(0, size, 1, np.float32)
+            y = x[:, np.newaxis]
+            x0 = y0 = size // 2
+            # The gaussian is not normalized, we want the center value to equal 1
+            g = np.exp(- ((x - x0) ** 2 + (y - y0) ** 2) / (2 * sigma ** 2))
 
-                # # Generate gaussian
-                size = 2 * tmp_size + 1
-                x = np.arange(0, size, 1, np.float32)
-                y = x[:, np.newaxis]
-                x0 = y0 = size // 2
-                # The gaussian is not normalized, we want the center value to equal 1
-                g = np.exp(- ((x - x0) ** 2 + (y - y0) ** 2) / (2 * self.sigma ** 2))
+            # Usable gaussian range
+            g_x = max(0, -ul[0]), min(br[0], heatmap_size[0]) - ul[0]
+            g_y = max(0, -ul[1]), min(br[1], heatmap_size[1]) - ul[1]
+            # Image range
+            img_x = max(0, ul[0]), min(br[0], heatmap_size[0])
+            img_y = max(0, ul[1]), min(br[1], heatmap_size[1])
 
-                # Usable gaussian range
-                g_x = max(0, -ul[0]), min(br[0], self.heatmap_size[0]) - ul[0]
-                g_y = max(0, -ul[1]), min(br[1], self.heatmap_size[1]) - ul[1]
-                # Image range
-                img_x = max(0, ul[0]), min(br[0], self.heatmap_size[0])
-                img_y = max(0, ul[1]), min(br[1], self.heatmap_size[1])
+            v = target_weight[joint_id]
+            if v > 0.5:
+                target[joint_id][img_y[0]:img_y[1], img_x[0]:img_x[1]] = \
+                    g[g_y[0]:g_y[1], g_x[0]:g_x[1]]
 
-                v = target_weight[joint_id]
-                if v > 0.5:
-                    target[joint_id][img_y[0]:img_y[1], img_x[0]:img_x[1]] = \
-                        g[g_y[0]:g_y[1], g_x[0]:g_x[1]]
+        return target, target_weight
+
+    @staticmethod
+    def generate_paf(joints, limbs, d, image_size, paf_size):
+        target_weight = np.ones((len(limbs), 1), dtype=np.float32)
+        target = np.zeros((len(limbs),
+                           paf_size[1],
+                           paf_size[0],
+                           2),
+                          dtype=np.float32)
+        feat_stride = image_size / paf_size
+        d *= paf_size[1] / image_size[1]
+        for limb_id, limb in enumerate(limbs):
+
+            j1, j2 = limb[0], limb[1]
+            j1_x = int(joints[j1][0] / feat_stride[0] + 0.5)
+            j1_y = int(joints[j1][1] / feat_stride[1] + 0.5)
+            j2_x = int(joints[j2][0] / feat_stride[0] + 0.5)
+            j2_y = int(joints[j2][1] / feat_stride[1] + 0.5)
+
+            j1_pos, j2_pos = np.array((j1_x, j1_y)), np.array((j2_x, j2_y))
+            v = j2_pos - j1_pos
+            norm_v = v / np.max((np.linalg.norm(v), np.finfo(float).eps))
+
+            box_width, box_height = np.sqrt(v[0] ** 2 + v[1] ** 2), d
+            box_min_x, box_max_x, box_min_y, box_max_y = -box_width/2, box_width/2, -box_height/2, box_height/2
+            box_points_x = np.arange(box_min_x, box_max_x)
+            box_points_y = np.arange(box_min_y, box_max_y)
+            xx, yy = np.meshgrid(box_points_x, box_points_y)
+            points = np.stack((xx, yy), axis=2)
+            points = points.reshape((-1, 2))
+
+            center = j1_pos + v / 2
+            angle = np.arctan2(v[1], v[0])
+            R = np.array([[np.cos(angle), -np.sin(angle)],
+                          [np.sin(angle), np.cos(angle)]])
+            box = (R @ points.T).T + center
+            box = box.astype(int)
+
+            mask = np.zeros(paf_size, dtype=bool)
+            mask[np.clip(box[:, 1], 0, paf_size[0] - 1), np.clip(box[:, 0], 0, paf_size[1] - 1)] = 1
+            target[limb_id][imfill(mask)] = [norm_v[1], norm_v[0]]
 
         return target, target_weight

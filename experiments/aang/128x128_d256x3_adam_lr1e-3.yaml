@@ -23,6 +23,7 @@ MODEL:
   - 128
   - 128
   NUM_JOINTS: 14
+  NUM_LIMBS: 13
   PARENTS:
   - -1
   - 0
@@ -38,6 +39,33 @@ MODEL:
   - 7
   - 8
   - 9
+  LIMBS:
+  - - 0
+    - 1
+  - - 0
+    - 2
+  - - 0
+    - 3
+  - - 0
+    - 4
+  - - 0
+    - 5
+  - - 2
+    - 6
+  - - 3
+    - 7
+  - - 4
+    - 8
+  - - 5
+    - 9
+  - - 6
+    - 10
+  - - 7
+    - 11
+  - - 8
+    - 12
+  - - 9
+    - 13
   EXTRA:
     TARGET_TYPE: gaussian
     SIGMA: 2
@@ -46,17 +74,17 @@ MODEL:
     - 64
     FINAL_CONV_KERNEL: 1
     DECONV_WITH_BIAS: false
-    NUM_DECONV_LAYERS: 4
+    NUM_DECONV_LAYERS: 2
     NUM_DECONV_FILTERS:
     - 256
     - 256
-    - 256
-    - 256
+#    - 256
+#    - 256
     NUM_DECONV_KERNELS:
     - 4
     - 4
-    - 4
-    - 4
+#    - 4
+#    - 4
     NUM_LAYERS: 16
 LOSS:
   USE_TARGET_WEIGHT: true
@@ -64,7 +92,7 @@ TRAIN:
   BATCH_SIZE: 64
   SHUFFLE: true
   BEGIN_EPOCH: 0
-  END_EPOCH: 30
+  END_EPOCH: 55
   RESUME: false
   OPTIMIZER: adam
   LR: 0.001

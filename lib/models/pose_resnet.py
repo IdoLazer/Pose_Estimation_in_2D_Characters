@@ -156,8 +156,8 @@ class PoseResNet(nn.Module):
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
+        # self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
+        # self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
 
         # used for deconv layers
         self.deconv_layers = self._make_deconv_layer(
@@ -168,11 +168,40 @@ class PoseResNet(nn.Module):
 
         self.final_layer = nn.Conv2d(
             in_channels=extra.NUM_DECONV_FILTERS[-1],
-            out_channels=cfg.MODEL.NUM_JOINTS,
+            out_channels=cfg.MODEL.NUM_JOINTS + cfg.MODEL.NUM_LIMBS * 2,
             kernel_size=extra.FINAL_CONV_KERNEL,
             stride=1,
             padding=1 if extra.FINAL_CONV_KERNEL == 3 else 0
         )
+
+        # self.conv2 = nn.Conv2d(cfg.MODEL.NUM_JOINTS + cfg.MODEL.NUM_LIMBS * 2, 64, kernel_size=7, stride=2, padding=3,
+        #                        bias=False)
+        # self.bn2 = nn.BatchNorm2d(64, momentum=BN_MOMENTUM)
+        # self.relu2 = nn.ReLU(inplace=True)
+        # self.maxpool2 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        #
+        # self.inplanes = 64
+        # self.layer1_2 = self._make_layer(block, 64, layers[0])
+        # self.layer2_2 = self._make_layer(block, 128, layers[1], stride=2)
+        # self.layer3_2 = self._make_layer(block, 256, layers[2], stride=2)
+        #
+        # # used for deconv layers
+        # self.deconv_layers_2 = self._make_deconv_layer(
+        #     extra.NUM_DECONV_LAYERS,
+        #     extra.NUM_DECONV_FILTERS,
+        #     extra.NUM_DECONV_KERNELS,
+        # )
+        #
+        # self.final_layer_2 = nn.Conv2d(
+        #     in_channels=extra.NUM_DECONV_FILTERS[-1],
+        #     out_channels=cfg.MODEL.NUM_JOINTS + cfg.MODEL.NUM_LIMBS * 2,
+        #     kernel_size=extra.FINAL_CONV_KERNEL,
+        #     stride=1,
+        #     padding=1 if extra.FINAL_CONV_KERNEL == 3 else 0
+        # )
+
+        self.num_joints = cfg.MODEL.NUM_JOINTS
+        self.num_limbs = cfg.MODEL.NUM_LIMBS
 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
@@ -239,11 +268,23 @@ class PoseResNet(nn.Module):
 
         x = self.layer1(x)
         x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
+        # x = self.layer3(x)
+        # x = self.layer4(x)
 
         x = self.deconv_layers(x)
         x = self.final_layer(x)
+
+        # x = self.conv2(x1)
+        # x = self.bn2(x)
+        # x = self.relu2(x)
+        # x = self.maxpool2(x)
+        #
+        # x = self.layer1_2(x)
+        # x = self.layer2_2(x)
+        # x = self.layer3_2(x)
+        #
+        # x = self.deconv_layers_2(x)
+        # x2 = self.final_layer_2(x)
 
         return x
 

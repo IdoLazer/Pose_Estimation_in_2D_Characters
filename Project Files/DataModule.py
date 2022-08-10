@@ -1,15 +1,15 @@
 import os
-from datetime import datetime
+from pathlib import Path
 
+import json_tricks as json
+import numpy as np
 import pandas as pd
 import torch
-from torchvision.io import read_image, ImageReadMode
-from torch.utils.data import Dataset
+import shutil
 from torch.utils.data import DataLoader
-import numpy as np
+from torch.utils.data import Dataset
+from torchvision.io import read_image, ImageReadMode
 from tqdm import tqdm
-import json_tricks as json
-from pathlib import Path
 
 import ImageGenerator
 from Config import config
@@ -104,11 +104,11 @@ def forge_new_dataset(samples=1000, num_samples_to_save=1000):
     try:
         os.makedirs(f"{output_path}new_images\\")
     except OSError:
-        print(f"Creation of the directory {output_path}images\\ failed")
+        print(f"Creation of the directory {output_path}new_images\\ failed")
     try:
-        os.makedirs(f"{output_path}annot\\")
+        os.makedirs(f"{output_path}new_annot\\")
     except OSError:
-        print(f"Creation of the directory {output_path}annot\\ failed")
+        print(f"Creation of the directory {output_path}new_annot\\ failed")
     train_annotations = []
     test_annotations = []
     train_parameters = generate_parameters(num_layers, int(samples * 0.8), angle_range, scaling_range, translation_range)
@@ -120,28 +120,35 @@ def forge_new_dataset(samples=1000, num_samples_to_save=1000):
         idx = np.random.randint(2)
         char = ImageGenerator.char if idx == 0 else ImageGenerator.char_side
         im, annotations = ImageGenerator.create_image(char, im_parameters, draw_skeleton=False,
-                                                   print_dict=False, as_image=True)
+                                                      print_dict=False, as_image=True)
         forged_images.append(im)
         batch_annotations.append(annotations)
         if index % num_samples_to_save == num_samples_to_save - 1:
-            save_image_batch(forged_images, batch_annotations, index - num_samples_to_save + 1, train_annotations, output_path)
+            save_image_batch(forged_images, batch_annotations, index - num_samples_to_save + 1, train_annotations,
+                             output_path)
             forged_images = []
             batch_annotations = []
-    json.dump(train_annotations, f"{output_path}annot\\train.json")
+    json.dump(train_annotations, f"{output_path}new_annot\\train.json")
 
     for index in tqdm(range(len(test_parameters))):
         im_parameters = test_parameters[index]
         im, annotations = ImageGenerator.create_image(ImageGenerator.char, im_parameters, draw_skeleton=False,
-                                                   print_dict=False, as_image=True)
+                                                      print_dict=False, as_image=True)
         forged_images.append(im)
         batch_annotations.append(annotations)
         if index % num_samples_to_save == num_samples_to_save - 1:
-            save_image_batch(forged_images, batch_annotations, index - num_samples_to_save + 1 + int(samples * 0.8), test_annotations, output_path)
+            save_image_batch(forged_images, batch_annotations, index - num_samples_to_save + 1 + int(samples * 0.8),
+                             test_annotations, output_path)
             forged_images = []
             batch_annotations = []
-    json.dump(test_annotations, f"{output_path}annot\\valid.json")
+    json.dump(test_annotations, f"{output_path}new_annot\\valid.json")
+
+    for file in os.listdir(f"{output_path}test"):
+        shutil.copy(f"{output_path}test\\{file}", f"{output_path}new_images")
+
+    shutil.copy(f"{output_path}annot\\test.json", f"{output_path}new_annot")
 
 
 if __name__ == "__main__":
-    forge_new_dataset(samples=100000, num_samples_to_save=1000)
+    forge_new_dataset(samples=100000, num_samples_to_save=10000)
 

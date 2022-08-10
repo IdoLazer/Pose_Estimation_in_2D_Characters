@@ -34,6 +34,15 @@ class Vector2D:
             y = self.y * other
         return Vector2D(x, y)
 
+    def __truediv__(self, other):
+        if isinstance(other, Vector2D):
+            x = self.x / other.x
+            y = self.y / other.y
+        else:
+            x = self.x / other
+            y = self.y / other
+        return Vector2D(x, y)
+
     def __iadd__(self, other):
         self.x += other.x
         self.y += other.y
@@ -64,6 +73,18 @@ class Vector2D:
 
     def __str__(self):
         return "({0},{1})".format(self.x, self.y)
+
+    def dot(self, other):
+        return self.x * other.x + self.y * other.y
+
+    def cross(self, other):
+        return self.x * other.y - self.y * other.x
+
+    def size(self):
+        return math.sqrt(self.x**2 + self.y**2)
+
+    def normalized(self):
+        return self / self.size()
 
 
 images_front = dict()
@@ -131,11 +152,13 @@ class Character:
 
 
 class BodyPart:
-    def __init__(self, parent, name, path: str, dist_from_parent, parameters, images, flipped=0):
+    def __init__(self, parent, name, path: str, dist_from_parent, parameters, images, flipped=0, is_random=True):
         self.parent = parent
         self.name = name
-        self.mirror = np.random.randint(2)
+        self.mirror = np.random.randint(2) if is_random else 1
         self.flipped = False
+
+        # Flipping right and left limbs
         if flipped == 1:
             self.flipped = True
             name = name.replace('Left', 'Right') if 'Left' in name else name.replace('Right', 'Left')
@@ -144,10 +167,14 @@ class BodyPart:
         #     self.mirror = np.random.randint(2)
         # else:
         #     self.mirror = 1
-        if 'Foot' in name or 'Head' in name or 'Palm' in name:
+
+        # Randomly replacing front and side versions of 'edge' limbs
+        if is_random and ('Foot' in name or 'Head' in name or 'Palm' in name):
             images_idx = np.random.randint(2)
             images = images_front if images_idx == 0 else images_side
             path = path.replace('Side', 'Front') if images_idx == 0 else path.replace('Front', 'Side')
+
+        # Randomly mirroring limbs
         if name not in images and path is not None:
             im = Image.open(path)
             mirrored_im = Image.open(path.split('.')[0] + '_mirrored.png')
@@ -250,8 +277,8 @@ def traverse_tree(cur, size, layers, joints, draw_skeleton, skeleton_draw, trans
     # im = cur.colored_im if colored else cur.im
     im = cur.im
     if transform:
-        transform_matrix = create_affine_transform(cur.rotation, image_center, cur.position, cur.scaling, cur.name,
-                                                   for_label=True, im_size=size)
+        # transform_matrix = create_affine_transform(cur.rotation, image_center, cur.position, cur.scaling, cur.name,
+        #                                            for_label=True, im_size=size)
         joints[cur.name] = [(cur.position + image_center).x, size - (cur.position + image_center).y]
         im = im.transform((size, size),
                                   Image.AFFINE,
@@ -280,8 +307,8 @@ def traverse_tree(cur, size, layers, joints, draw_skeleton, skeleton_draw, trans
 
 
 def generate_layers(character, parameters, draw_skeleton=False, as_tensor=False, transform=True, print_dict=False,
-                    colored=False):
-    origin = create_body_hierarchy(parameters, character)
+                    colored=False, is_random=True):
+    origin = create_body_hierarchy(parameters, character, is_random=is_random)
     layers = {}
     joints = {}
     skeleton = Image.new('RGBA', (character.image_size, character.image_size))
@@ -308,9 +335,9 @@ def generate_layers(character, parameters, draw_skeleton=False, as_tensor=False,
     return torch.tensor(np.array(layers_list, dtype='float64')), torch.tensor(np.array(joints_list, dtype='float64'))
 
 
-def create_image(character, parameters, draw_skeleton=False, print_dict=False, as_image=False, random_order=True):
+def create_image(character, parameters, draw_skeleton=False, print_dict=False, as_image=False, random_order=True, random_generation=True):
     drawing_order = character.drawing_order + ['Skeleton']
-    layers, joints = generate_layers(character, parameters, draw_skeleton, print_dict=print_dict)
+    layers, joints = generate_layers(character, parameters, draw_skeleton, print_dict=print_dict, is_random=random_generation)
     im_size = character.image_size
     im = Image.new("RGBA", (im_size, im_size))
     joints_list = []
@@ -321,12 +348,12 @@ def create_image(character, parameters, draw_skeleton=False, print_dict=False, a
         joints_list.append(joint_pos)
 
     labels = {"joints_vis": joints_vis_list, "joints": joints_list, "scale": 1, "center": joints_list[0]}
-    # if random_order:
-    #     rand_int = np.random.randint(config['dataset']['max_layer_swaps'])
-    #     for rand in range(rand_int):
-    #         i = np.random.randint(len(drawing_order) - 1)
-    #         j = np.random.randint(len(drawing_order) - 1)
-    #         drawing_order[j], drawing_order[i] = drawing_order[i], drawing_order[j]
+    if random_order:
+        rand_int = np.random.randint(config['dataset']['max_layer_swaps'])
+        for rand in range(rand_int):
+            i = np.random.randint(len(drawing_order) - 1)
+            j = np.random.randint(len(drawing_order) - 1)
+            drawing_order[j], drawing_order[i] = drawing_order[i], drawing_order[j]
 
     for part in drawing_order:
         alpha = ImageOps.invert(layers[part].split()[-1])
@@ -334,14 +361,15 @@ def create_image(character, parameters, draw_skeleton=False, print_dict=False, a
     return (im, labels) if as_image else (np.array(im).astype('uint8'), labels)
 
 
-def create_body_hierarchy(parameters, character):
+def create_body_hierarchy(parameters, character, is_random=True):
     if parameters is not None:
         angles = parameters[0]
         for i in range(len(angles)):
             angles[i] += character.sample_params[i]
         # parameters[0] = [0, 0, 50, 60, 0, -10, 60, 60, -5, 10, -30, -30, 30, -30]  # TODO: Always comment out when starting
         parameters = parameters.transpose()
-        parameters[0][0] = np.random.randint(-5, 5)
+        if is_random:
+            parameters[0][0] = np.random.randint(-20, 20)
         # new_params = np.array([0, 1, 1, 0, 0] * len(character.char_tree_array), dtype=float).\
         #     reshape((len(character.char_tree_array), 5))
         # l4 = [0, 10, 12]
@@ -369,7 +397,7 @@ def create_body_hierarchy(parameters, character):
         # new_params[12][1] = 1.5
         # new_params[12][2] = 0.8
         # new_params[13][0] = -10
-        # new_params[13][1] = 1.3
+        # new_params[5] = parameters[5]
         # parameters = new_params
     else:
         parameters = np.array([0, 1, 1, 0, 0] * len(character.char_tree_array)).\
@@ -387,7 +415,7 @@ def create_body_hierarchy(parameters, character):
             displacement = layer_info['displacement']
 
         path = layer_info['path']
-        if 'Left' in part or 'Right' in part:
+        if is_random and ('Left' in part or 'Right' in part):
             flipped = np.random.randint(2)
             # flipped = 0
             if flipped == 1:
@@ -398,7 +426,7 @@ def create_body_hierarchy(parameters, character):
         # if flipped == 1:
         #     displacement *= Vector2D(-1, 1)
         images = images_front if character == char else images_side
-        parts_list.append(BodyPart(parent, name, path, displacement, parameters[i], images, flipped))
+        parts_list.append(BodyPart(parent, name, path, displacement, parameters[i], images, flipped, is_random=is_random))
     return parts_list[0]
 
 
@@ -432,8 +460,22 @@ if __name__ == "__main__":
     #                                       "Right Arm",
     #                                       "Right Shoulder"])
 
-    char = Character(config['dirs']['source_dir'] + 'Character Layers\\Aang2\\Side\\Config.txt')
-    parameters = DataModule.generate_parameters(len(char.char_tree_array), 1)
-    im, mat = create_image(char, parameters[0], draw_skeleton=False, print_dict=False, as_image=True, random_order=False)
-    im.show()
+    char = Character(config['dirs']['source_dir'] + 'Character Layers\\Aang2\\Front\\Config.txt')
+    parameters = DataModule.generate_parameters(len(char.char_tree_array), 1, 50)
+    im, mat = create_image(char, parameters[0], draw_skeleton=False, print_dict=False, as_image=False, random_order=False, random_generation=False)
+    import matplotlib.pyplot as plt
+    joints1 = np.array(mat['joints'])
+    joints1 = np.transpose(joints1)
+    plt.scatter(joints1[0], joints1[1])
+    plt.imshow(im)
+    plt.show()
+
+    with open(r"C:\School\Huji\Thesis\Pose_Estimation_in_2D_Characters\pose_estimation\output\aang\pose_resnet_16\128x128_d256x3_adam_lr1e-3\val\val_file\_iter_0_joints_pred.json") as f:
+        all_annotations = json.load(f)
+        x = 1.5
+        joints2 = np.array([joint for joint in all_annotations['0'].values()]) * x - (x - 1) * 64
+        joints2 = np.transpose(joints2)
+        plt.scatter(joints2[0] + 3, joints2[1] - 9)
+        plt.imshow(im)
+        plt.show()
     # im.save(config['dirs']['source_dir'] + 'Test Inputs\\Images\\fabricated_post.png')

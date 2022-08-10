@@ -79,6 +79,10 @@ class AangDataset(JointsDataset):
                 joints_3d_vis[:, 0] = joints_vis[:]
                 joints_3d_vis[:, 1] = joints_vis[:]
 
+            limbs = []
+            for i, parent_id in enumerate(self.parent_ids):
+                if parent_id is not None:
+                    limbs.append([parent_id, i])
             image_dir = 'images.zip@' if self.data_format == 'zip' else 'images'
             gt_db.append({
                 'image': os.path.join(self.root, image_dir, image_name),
@@ -88,6 +92,7 @@ class AangDataset(JointsDataset):
                 'joints_3d_vis': joints_3d_vis,
                 'filename': '',
                 'imgnum': 0,
+                'limbs': limbs,
                 })
 
         return gt_db

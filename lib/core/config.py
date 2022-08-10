@@ -52,8 +52,10 @@ config.MODEL.NAME = 'pose_resnet'
 config.MODEL.INIT_WEIGHTS = False
 config.MODEL.PRETRAINED = ''
 config.MODEL.NUM_JOINTS = 16
+config.MODEL.NUM_LIMBS = 15
 config.MODEL.IMAGE_SIZE = [256, 256]  # width * height, ex: 192 * 256
 config.MODEL.PARENTS = []
+config.MODEL.LIMBS = []
 config.MODEL.EXTRA = MODEL_EXTRAS[config.MODEL.NAME]
 config.MODEL.STYLE = 'pytorch'
 

@@ -127,7 +127,9 @@ def main():
         model_state_file = os.path.join(final_output_dir,
                                         'final_state.pth.tar')
         logger.info('=> loading model from {}'.format(model_state_file))
-        model.load_state_dict(torch.load(model_state_file))
+        new_state_dict = torch.load(model_state_file)
+        # new_state_dict = {'.'.join(k.split('.')[1:]): new_state_dict[k] for k in new_state_dict}
+        model.load_state_dict(new_state_dict)
 
     gpus = [int(i) for i in config.GPUS.split(',')]
     model = torch.nn.DataParallel(model, device_ids=gpus).cuda()
@@ -147,6 +149,7 @@ def main():
         False,
         transforms.Compose([
             transforms.ToTensor(),
+            transforms.GaussianBlur(3, (3, 3)),
             normalize,
         ])
     )
