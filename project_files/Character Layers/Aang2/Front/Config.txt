@@ -88,7 +88,7 @@
                 22
             ],
             "name": "Head",
-            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang2\\Front\\Head.png"
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Aang2\\Front\\Head.png"
         },
         "Left Arm": {
             "displacement": [
@@ -96,7 +96,7 @@
                 -18
             ],
             "name": "Left Arm",
-            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang2\\Front\\Left Arm.png"
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Aang2\\Front\\Left Arm.png"
         },
         "Left Foot": {
             "displacement": [
@@ -104,7 +104,7 @@
                 -12
             ],
             "name": "Left Foot",
-            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang2\\Front\\Left Foot.png"
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Aang2\\Front\\Left Foot.png"
         },
         "Left Lower Leg": {
             "displacement": [
@@ -112,7 +112,7 @@
                 -30
             ],
             "name": "Left Lower Leg",
-            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang2\\Front\\Left Lower Leg.png"
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Aang2\\Front\\Left Lower Leg.png"
         },
         "Left Palm": {
             "displacement": [
@@ -120,7 +120,7 @@
                 -10
             ],
             "name": "Left Palm",
-            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang2\\Front\\Left Palm.png"
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Aang2\\Front\\Left Palm.png"
         },
         "Left Shoulder": {
             "displacement": [
@@ -128,7 +128,7 @@
                 16
             ],
             "name": "Left Shoulder",
-            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang2\\Front\\Left Shoulder.png"
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Aang2\\Front\\Left Shoulder.png"
         },
         "Left Upper Leg": {
             "displacement": [
@@ -136,7 +136,7 @@
                 -12
             ],
             "name": "Left Upper Leg",
-            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang2\\Front\\Left Upper Leg.png"
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Aang2\\Front\\Left Upper Leg.png"
         },
         "Right Arm": {
             "displacement": [
@@ -144,7 +144,7 @@
                 -19
             ],
             "name": "Right Arm",
-            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang2\\Front\\Right Arm.png"
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Aang2\\Front\\Right Arm.png"
         },
         "Right Foot": {
             "displacement": [
@@ -152,7 +152,7 @@
                 -12
             ],
             "name": "Right Foot",
-            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang2\\Front\\Right Foot.png"
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Aang2\\Front\\Right Foot.png"
         },
         "Right Lower Leg": {
             "displacement": [
@@ -160,7 +160,7 @@
                 -28
             ],
             "name": "Right Lower Leg",
-            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang2\\Front\\Right Lower Leg.png"
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Aang2\\Front\\Right Lower Leg.png"
         },
         "Right Palm": {
             "displacement": [
@@ -168,7 +168,7 @@
                 -11
             ],
             "name": "Right Palm",
-            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang2\\Front\\Right Palm.png"
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Aang2\\Front\\Right Palm.png"
         },
         "Right Shoulder": {
             "displacement": [
@@ -176,7 +176,7 @@
                 16
             ],
             "name": "Right Shoulder",
-            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang2\\Front\\Right Shoulder.png"
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Aang2\\Front\\Right Shoulder.png"
         },
         "Right Upper Leg": {
             "displacement": [
@@ -184,7 +184,7 @@
                 -12
             ],
             "name": "Right Upper Leg",
-            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang2\\Front\\Right Upper Leg.png"
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Aang2\\Front\\Right Upper Leg.png"
         },
         "Root": {
             "displacement": [
@@ -192,7 +192,7 @@
                 9
             ],
             "name": "Root",
-            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang2\\Front\\Torso.png"
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Aang2\\Front\\Torso.png"
         }
     },
     "parents": [
@@ -211,7 +211,7 @@
         8,
         9
     ],
-    "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\Project Files\\Character Layers\\Aang2\\Front\\",
+    "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Aang2\\Front\\",
     "sample_params": [
         0,
         0,

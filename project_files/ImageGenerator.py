@@ -6,8 +6,8 @@ import torch
 from PIL import Image, ImageDraw, ImageOps
 from tqdm import tqdm
 
-import DataModule
-from Config import config
+import project_files.DataModule
+from project_files.Config import config
 
 class Vector2D:
 
@@ -36,11 +36,20 @@ class Vector2D:
 
     def __truediv__(self, other):
         if isinstance(other, Vector2D):
-            x = self.x / other.x
-            y = self.y / other.y
-        else:
+            if other.x > 0:
+                x = self.x / other.x
+            else:
+                x = self.x / 1e-6
+            if other.y > 0:
+                y = self.y / other.y
+            else:
+                y = self.y / 1e-6
+        elif other > 0:
             x = self.x / other
             y = self.y / other
+        else:
+            x = self.x / 1e-6
+            y = self.y / 1e-6
         return Vector2D(x, y)
 
     def __iadd__(self, other):
@@ -64,11 +73,20 @@ class Vector2D:
 
     def __floordiv__(self, other):
         if isinstance(other, Vector2D):
-            self.x /= other.x
-            self.y /= other.y
-        else:
+            if other.x > 0:
+                self.x /= other.x
+            else:
+                self.x /= 1e-6
+            if other.y > 0:
+                self.y /= other.y
+            else:
+                self.y /= 1e-6
+        elif other > 0:
             self.x /= other
             self.y /= other
+        else:
+            self.x /= 1e-6
+            self.y /= 1e-6
         return self
 
     def __str__(self):
@@ -84,7 +102,12 @@ class Vector2D:
         return math.sqrt(self.x**2 + self.y**2)
 
     def normalized(self):
-        return self / self.size()
+        if self.size() > 0:
+            return self / self.size()
+        return Vector2D(0, 0)
+
+    def copy(self):
+        return Vector2D(self.x, self.y)
 
 
 images_front = dict()

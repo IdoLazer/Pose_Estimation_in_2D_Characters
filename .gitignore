@@ -1,9 +1,9 @@
-Project Files/Plots
-Project Files/Data
-Project Files/Sequences
-Project Files/Test Outputs
-Project Files/__pycache__
-Project Files/.cache
+project_files/Plots
+project_files/Data
+project_files/Sequences
+project_files/Test Outputs
+project_files/__pycache__
+project_files/.cache
 
 
 # Byte-compiled / optimized / DLL files

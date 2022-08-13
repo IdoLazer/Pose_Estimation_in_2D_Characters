@@ -11,8 +11,8 @@ from torch.utils.data import Dataset
 from torchvision.io import read_image, ImageReadMode
 from tqdm import tqdm
 
-import ImageGenerator
-from Config import config
+import project_files.ImageGenerator
+from project_files.Config import config
 
 
 class ImageDataset(Dataset):

@@ -14,7 +14,7 @@ import numpy as np
 import torchvision
 import cv2
 import json_tricks as json
-
+import project_files.SequenceGenerator as sequence
 from core.inference import get_max_preds, get_max_preds_with_pafs
 
 
@@ -198,7 +198,7 @@ def save_batch_pafs(batch_image, batch_pafs, file_name,
 
 
 def save_debug_images(config, input, meta, hm_target, paf_target, joints_pred, hm_output, paf_output,
-                      prefix):
+                      prefix, vis_sequence=False):
     if not config.DEBUG.DEBUG:
         return
 
@@ -208,6 +208,9 @@ def save_debug_images(config, input, meta, hm_target, paf_target, joints_pred, h
         for j, joint in enumerate(joints):
             joints_dict[i][j] = joint.tolist()
     json.dump(joints_dict, '{}_joints_pred.json'.format(prefix))
+
+    if vis_sequence:
+        sequence.GenerateSequence('{}_joints_pred.json'.format(prefix))
 
     joints_dict = {}
     for i, joints in enumerate(meta['joints']):

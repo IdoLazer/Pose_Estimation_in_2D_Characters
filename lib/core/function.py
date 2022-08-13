@@ -207,7 +207,7 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
                                                        3,
                                                        config.MODEL.LIMBS)
                 save_debug_images(config, input, meta, hm_target, paf_target, vis_preds * 2, hm_output, paf_output,
-                                  prefix)
+                                  prefix, vis_sequence=True)
 
         name_values, perf_indicator = val_dataset.evaluate(
             config, all_preds, output_dir, all_boxes, image_path,
