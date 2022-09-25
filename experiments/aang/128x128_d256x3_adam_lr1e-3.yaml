@@ -10,7 +10,7 @@ CUDNN:
   ENABLED: True
 DATASET:
   DATASET: aang
-  ROOT: 'C:/School/Huji/Thesis/Pose_Estimation_in_2D_Characters/data/aang/'
+  ROOT: 'C:/School/Huji/Thesis/Pose_Estimation_in_2D_Characters/data/aang/2022-08-24_13-18-38'
   TEST_SET: test
   TRAIN_SET: train
   FLIP: true
