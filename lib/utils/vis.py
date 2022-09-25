@@ -197,7 +197,7 @@ def save_batch_pafs(batch_image, batch_pafs, file_name,
     cv2.imwrite(file_name, grid_image)
 
 
-def save_debug_images(config, input, meta, hm_target, paf_target, joints_pred, hm_output, paf_output,
+def save_debug_images(config, input, meta, hm_target, paf_target, joints_pred, original_preds, hm_output, paf_output,
                       prefix, vis_sequence=False):
     if not config.DEBUG.DEBUG:
         return
@@ -210,7 +210,7 @@ def save_debug_images(config, input, meta, hm_target, paf_target, joints_pred, h
     json.dump(joints_dict, '{}_joints_pred.json'.format(prefix))
 
     if vis_sequence:
-        sequence.GenerateSequence('{}_joints_pred.json'.format(prefix))
+        sequence.GenerateSequence('{}_joints_pred.json'.format(prefix), scale=1)
 
     joints_dict = {}
     for i, joints in enumerate(meta['joints']):
@@ -227,7 +227,7 @@ def save_debug_images(config, input, meta, hm_target, paf_target, joints_pred, h
         )
     if config.DEBUG.SAVE_BATCH_IMAGES_PRED:
         save_batch_image_with_joints(
-            input, joints_pred, meta['joints_vis'],
+            input, original_preds, meta['joints_vis'],
             '{}_pred.jpg'.format(prefix),
             config.MODEL.PARENTS
         )

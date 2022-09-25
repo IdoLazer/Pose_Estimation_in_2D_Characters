@@ -107,14 +107,14 @@ class JointsDataset(Dataset):
                 c[0] = data_numpy.shape[1] - c[0] - 1
 
         trans = get_affine_transform(c, s, r, self.image_size)
-        input = cv2.warpAffine(
+        transformed_input = cv2.warpAffine(
             data_numpy,
             trans,
             (int(self.image_size[0]), int(self.image_size[1])),
             flags=cv2.INTER_LINEAR)
 
         if self.transform:
-            input = self.transform(input)
+            transformed_input = self.transform(transformed_input)
 
         for i in range(self.num_joints):
             if joints_vis[i, 0] > 0.0:
@@ -145,7 +145,7 @@ class JointsDataset(Dataset):
             'limbs': limbs,
         }
 
-        return input, hm_target, hm_target_weight, paf_target, paf_target_weight, meta
+        return transformed_input, hm_target, hm_target_weight, paf_target, paf_target_weight, meta
 
     def select_data(self, db):
         db_selected = []

@@ -97,7 +97,7 @@ def train(config, train_loader, model, criterion, optimizer, epoch,
             writer_dict['train_global_steps'] = global_steps + 1
 
             prefix = '{}_{}'.format(os.path.join(output_dir, 'train'), i)
-            save_debug_images(config, input, meta, hm_target, paf_target, pred*2, hm_output, paf_output,
+            save_debug_images(config, input, meta, hm_target, paf_target, pred, pred, hm_output, paf_output,
                               prefix)
 
 
@@ -171,22 +171,22 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
             s = meta['scale'].numpy()
             score = meta['score'].numpy()
 
-            preds, maxvals = get_final_preds(
+            preds, maxvals, original_preds = get_final_preds(
                 config, hm_output.clone().cpu().numpy(), paf_output.clone().cpu().numpy(), config.MODEL.LIMBS, c, s)
 
-            all_preds[idx:idx + num_images, :, 0:2] = preds[:, :, 0:2]
-            all_preds[idx:idx + num_images, :, 2:3] = maxvals
-            # double check this all_boxes parts
-            all_boxes[idx:idx + num_images, 0:2] = c[:, 0:2]
-            all_boxes[idx:idx + num_images, 2:4] = s[:, 0:2]
-            all_boxes[idx:idx + num_images, 4] = np.prod(s*200, 1)
-            all_boxes[idx:idx + num_images, 5] = score
-            image_path.extend(meta['image'])
-            if config.DATASET.DATASET == 'posetrack':
-                filenames.extend(meta['filename'])
-                imgnums.extend(meta['imgnum'].numpy())
-
-            idx += num_images
+            # all_preds[idx:idx + num_images, :, 0:2] = preds[:, :, 0:2]
+            # all_preds[idx:idx + num_images, :, 2:3] = maxvals
+            # # double check this all_boxes parts
+            # all_boxes[idx:idx + num_images, 0:2] = c[:, 0:2]
+            # all_boxes[idx:idx + num_images, 2:4] = s[:, 0:2]
+            # all_boxes[idx:idx + num_images, 4] = np.prod(s*200, 1)
+            # all_boxes[idx:idx + num_images, 5] = score
+            # image_path.extend(meta['image'])
+            # if config.DATASET.DATASET == 'posetrack':
+            #     filenames.extend(meta['filename'])
+            #     imgnums.extend(meta['imgnum'].numpy())
+            #
+            # idx += num_images
 
             if i % config.PRINT_FREQ == 0:
                 msg = 'Test: [{0}/{1}]\t' \
@@ -202,12 +202,12 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
                     print('=> creating {}'.format(val_path))
                     val_path.mkdir(parents=True)
                 prefix = f"{os.path.join(val_path, prefix)}_iter_{i}"
-                vis_preds, _ = get_max_preds_with_pafs(hm_output.clone().cpu().numpy(),
-                                                       paf_output.clone().cpu().numpy(),
-                                                       3,
-                                                       config.MODEL.LIMBS)
-                save_debug_images(config, input, meta, hm_target, paf_target, vis_preds * 2, hm_output, paf_output,
-                                  prefix, vis_sequence=True)
+                # vis_preds, _ = get_max_preds_with_pafs(hm_output.clone().cpu().numpy(),
+                #                                        paf_output.clone().cpu().numpy(),
+                #                                        3,
+                #                                        config.MODEL.LIMBS)
+                save_debug_images(config, input, meta, hm_target, paf_target, preds, original_preds,
+                                  hm_output, paf_output, prefix, vis_sequence=True)
 
         name_values, perf_indicator = val_dataset.evaluate(
             config, all_preds, output_dir, all_boxes, image_path,

@@ -75,8 +75,7 @@ def get_parameters_from_annotations(char, im_annotations):
     return np.array(parameters)
 
 
-def GenerateSequence(filename):
-    scale = 1.5
+def GenerateSequence(filename, scale=1):
     char_front = project_files.ImageGenerator.char
     char_side = project_files.ImageGenerator.char_side
     folder = '\\'.join(filename.split('\\')[:-1])
@@ -113,6 +112,7 @@ def GenerateSequence(filename):
             plt.savefig(im_file_name)
 
             im_annotations = np.transpose(im_annotations)
+            plt.scatter(im_annotations[0], im_annotations[1])
             plt.scatter(im_annotations[0] + 128, im_annotations[1])
 
             im_file_name_annotated = f"{folder}\\im{i}_annot.png"
@@ -138,4 +138,4 @@ def GenerateSequence(filename):
 
 
 if __name__ == "__main__":
-    GenerateSequence(r"C:\School\Huji\Thesis\Pose_Estimation_in_2D_Characters\pose_estimation\output\aang\pose_resnet_16\128x128_d256x3_adam_lr1e-3\val\00-00-14 10-08-2022\epoch_28_iter_0_joints_pred.json")
+    GenerateSequence(r"C:\School\Huji\Thesis\Pose_Estimation_in_2D_Characters\pose_estimation\output\aang\pose_resnet_16\128x128_d256x3_adam_lr1e-3\val\08-02-16 24-08-2022 (new dataset, 4 layers)\epoch_24_iter_0_joints_pred.json")
