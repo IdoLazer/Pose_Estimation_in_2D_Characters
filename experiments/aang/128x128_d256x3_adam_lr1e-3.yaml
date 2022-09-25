@@ -70,16 +70,16 @@ MODEL:
     TARGET_TYPE: gaussian
     SIGMA: 2
     HEATMAP_SIZE:
-    - 64
-    - 64
+    - 128
+    - 128
     FINAL_CONV_KERNEL: 1
     DECONV_WITH_BIAS: false
     NUM_DECONV_LAYERS: 4
     NUM_DECONV_FILTERS:
-    - 256
-    - 256
-    - 256
-    - 256
+    - 64
+    - 64
+    - 64
+    - 64
     NUM_DECONV_KERNELS:
     - 4
     - 4
@@ -92,7 +92,7 @@ TRAIN:
   BATCH_SIZE: 64
   SHUFFLE: true
   BEGIN_EPOCH: 0
-  END_EPOCH: 55
+  END_EPOCH: 25
   RESUME: false
   OPTIMIZER: adam
   LR: 0.001
