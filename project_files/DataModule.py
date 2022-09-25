@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from pathlib import Path
 
 import json_tricks as json
@@ -11,7 +12,8 @@ from torch.utils.data import Dataset
 from torchvision.io import read_image, ImageReadMode
 from tqdm import tqdm
 
-import project_files.ImageGenerator
+import project_files.ImageGenerator as ImageGenerator
+import project_files.Config as Config
 from project_files.Config import config
 
 
@@ -87,14 +89,15 @@ def save_image_batch(images, labels, start_idx, annotations, output_path):
         name = f"pose{start_idx + idx}.png"
         label["image"] = name
         annotations.append(label)
-        image.save(f"{output_path}new_images\\{name}")
+        image.save(f"{output_path}images\\{name}")
 
 
 def forge_new_dataset(samples=1000, num_samples_to_save=1000):
     angle_range = config['dataset']['angle_range']
     scaling_range = config['dataset']['scaling_range']
     translation_range = config['dataset']['translation_range']
-    output_path = f"{Path(__file__).resolve().parent.parent}\\data\\aang\\"
+    data_path = f"{Path(__file__).resolve().parent.parent}\\data\\aang\\"
+    output_path = f"{data_path}{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}\\"
     num_layers = len(ImageGenerator.char.char_tree_array)
 
     try:
@@ -102,13 +105,20 @@ def forge_new_dataset(samples=1000, num_samples_to_save=1000):
     except OSError:
         print("Creation of the directory %s failed" % output_path)
     try:
-        os.makedirs(f"{output_path}new_images\\")
+        os.makedirs(f"{output_path}images\\")
     except OSError:
-        print(f"Creation of the directory {output_path}new_images\\ failed")
+        print(f"Creation of the directory {output_path}images\\ failed")
     try:
-        os.makedirs(f"{output_path}new_annot\\")
+        os.makedirs(f"{output_path}annot\\")
     except OSError:
-        print(f"Creation of the directory {output_path}new_annot\\ failed")
+        print(f"Creation of the directory {output_path}annot\\ failed")
+    try:
+        conf_file = open(output_path + "\\config.txt", "w")
+        conf_file.write(Config.serialize())
+        conf_file.close()
+    except OSError:
+        print("Creation of config file failed")
+
     train_annotations = []
     test_annotations = []
     train_parameters = generate_parameters(num_layers, int(samples * 0.8), angle_range, scaling_range, translation_range)
@@ -128,7 +138,7 @@ def forge_new_dataset(samples=1000, num_samples_to_save=1000):
                              output_path)
             forged_images = []
             batch_annotations = []
-    json.dump(train_annotations, f"{output_path}new_annot\\train.json")
+    json.dump(train_annotations, f"{output_path}annot\\train.json")
 
     for index in tqdm(range(len(test_parameters))):
         im_parameters = test_parameters[index]
@@ -141,14 +151,14 @@ def forge_new_dataset(samples=1000, num_samples_to_save=1000):
                              test_annotations, output_path)
             forged_images = []
             batch_annotations = []
-    json.dump(test_annotations, f"{output_path}new_annot\\valid.json")
+    json.dump(test_annotations, f"{output_path}annot\\valid.json")
 
-    for file in os.listdir(f"{output_path}test"):
-        shutil.copy(f"{output_path}test\\{file}", f"{output_path}new_images")
+    for file in os.listdir(f"{data_path}test_images"):
+        shutil.copy(f"{data_path}test_images\\{file}", f"{output_path}images")
 
-    shutil.copy(f"{output_path}annot\\test.json", f"{output_path}new_annot")
+    shutil.copy(f"{data_path}test_annot\\test.json", f"{output_path}annot")
 
 
 if __name__ == "__main__":
-    forge_new_dataset(samples=100000, num_samples_to_save=10000)
+    forge_new_dataset(samples=100000, num_samples_to_save=1000)
 
