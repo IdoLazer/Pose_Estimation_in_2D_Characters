@@ -48,17 +48,22 @@ def detect_peaks(image, num_peaks):
 
     idxs = np.where(detected_peaks)
     maxvals = image[idxs]
+    maxval = np.max(maxvals)
     idxs = np.transpose(np.stack([idxs[0], idxs[1]]))
-    idxs = [idx for _, idx in sorted(zip(maxvals, idxs), key=lambda pair: pair[0])]
+    idxs = idxs[maxvals > np.min((0.3, maxval / 2))]
+    maxvals = maxvals[maxvals > np.min((0.3, maxval / 2))]
+    idxs = [idx for val, idx in sorted(zip(maxvals, idxs), key=lambda pair: pair[0])]
     if len(idxs) > num_peaks:
         idxs = idxs[-num_peaks:]
 
     return idxs, maxvals
 
 
-def calc_edge_score(q1, q2, paf, n=10):
+def calc_edge_score(q1, q2, paf):
+    length = np.linalg.norm(q2 - q1)
+    n = np.max((int(length) // 2, 1))
     x, y = np.rint(np.linspace(q1, q2, n)).astype(int).transpose()
-    normalized = (q2 - q1) / np.max((np.linalg.norm(q2 - q1), np.finfo(float).eps))
+    normalized = (q2 - q1) / np.max((length, np.finfo(float).eps))
     return np.sum(paf[(x, y)] * normalized)
 
 
@@ -123,7 +128,7 @@ def get_preds_from_tree(curr_node, preds):
 def get_max_preds_with_pafs(batch_heatmaps, batch_pafs, n, limbs):
     preds = []
     maxvals = []
-    for heatmap, pafs in zip(batch_heatmaps, batch_pafs):
+    for j, (heatmap, pafs) in enumerate(zip(batch_heatmaps, batch_pafs)):
         nodes = {}
         for i, jointmap in enumerate(heatmap):
             joint_peaks, joint_maxvals = detect_peaks(jointmap, n)
