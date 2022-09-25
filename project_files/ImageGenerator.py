@@ -391,8 +391,8 @@ def create_body_hierarchy(parameters, character, is_random=True):
             angles[i] += character.sample_params[i]
         # parameters[0] = [0, 0, 50, 60, 0, -10, 60, 60, -5, 10, -30, -30, 30, -30]  # TODO: Always comment out when starting
         parameters = parameters.transpose()
-        if is_random:
-            parameters[0][0] = np.random.randint(-20, 20)
+        # if is_random:
+        #     parameters[0][0] = np.random.randint(-20, 20)
         # new_params = np.array([0, 1, 1, 0, 0] * len(character.char_tree_array), dtype=float).\
         #     reshape((len(character.char_tree_array), 5))
         # l4 = [0, 10, 12]
@@ -434,6 +434,10 @@ def create_body_hierarchy(parameters, character, is_random=True):
         if parent is not None and parent.flipped:
             displacement_part = part.replace('Left', 'Right') if 'Left' in part else part.replace('Right', 'Left')
             displacement = character.layers_info[displacement_part]['displacement']
+        elif parent is None and is_random:
+            min_center_range, max_center_range = config['dataset']['center_range']
+            displacement = Vector2D(np.random.randint(min_center_range, max_center_range),
+                                    np.random.randint(min_center_range, max_center_range))
         else:
             displacement = layer_info['displacement']
 
