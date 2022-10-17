@@ -3,10 +3,11 @@ import math
 
 import numpy as np
 import torch
+import PIL
 from PIL import Image, ImageDraw, ImageOps
 from tqdm import tqdm
 
-import project_files.DataModule
+from project_files import DataModule
 from project_files.Config import config
 
 class Vector2D:
@@ -112,6 +113,7 @@ class Vector2D:
 
 images_front = dict()
 images_side = dict()
+images_side_mirrored = dict()
 colored_images = dict()
 
 
@@ -130,6 +132,7 @@ class Character:
         if path is not None:
             char_conf = json.load(open(path, 'r'))
             self.image_size = char_conf['image_size']
+            self.mirrored = char_conf['mirrored'] if 'mirrored' in char_conf else False
             self.path = char_conf['path']
             self.char_tree = char_conf['char_tree']
             self.layers_info = char_conf['layers_info']
@@ -175,7 +178,7 @@ class Character:
 
 
 class BodyPart:
-    def __init__(self, parent, name, path: str, dist_from_parent, parameters, images, flipped=0, is_random=True):
+    def __init__(self, parent, name, path: str, dist_from_parent, parameters, images, flipped=0, is_random=True, mirrored=False):
         self.parent = parent
         self.name = name
         self.mirror = np.random.randint(2) if is_random else 1
@@ -194,13 +197,15 @@ class BodyPart:
         # Randomly replacing front and side versions of 'edge' limbs
         if is_random and ('Foot' in name or 'Head' in name or 'Palm' in name):
             images_idx = np.random.randint(2)
-            images = images_front if images_idx == 0 else images_side
+            images = images_front if images_idx == 0 else images_side if not mirrored else images_side_mirrored
             path = path.replace('Side', 'Front') if images_idx == 0 else path.replace('Front', 'Side')
 
         # Randomly mirroring limbs
         if name not in images and path is not None:
             im = Image.open(path)
             mirrored_im = Image.open(path.split('.')[0] + '_mirrored.png')
+            if mirrored:
+                im = im.transpose(PIL.Image.FLIP_LEFT_RIGHT)
             images[name] = [mirrored_im, im]
             self.im = images[name][self.mirror]
 
@@ -246,6 +251,8 @@ try:
                      '\\Front\\Config.txt')
     char_side = Character(config['dirs']['source_dir'] + 'Character Layers\\' + config['dataset']['character'] +
                      '\\Side\\Config.txt')
+    # char_side_mirrored = Character(config['dirs']['source_dir'] + 'Character Layers\\' + config['dataset']['character'] +
+    #                       '\\Side\\Config_mirrored.txt')
 except OSError:
     print("Couldn't find config file for " + config['dataset']['character'])
 
@@ -330,8 +337,8 @@ def traverse_tree(cur, size, layers, joints, draw_skeleton, skeleton_draw, trans
 
 
 def generate_layers(character, parameters, draw_skeleton=False, as_tensor=False, transform=True, print_dict=False,
-                    colored=False, is_random=True):
-    origin = create_body_hierarchy(parameters, character, is_random=is_random)
+                    colored=False, is_random=True, mirrored=False):
+    origin = create_body_hierarchy(parameters, character, is_random=is_random, mirrored=mirrored)
     layers = {}
     joints = {}
     skeleton = Image.new('RGBA', (character.image_size, character.image_size))
@@ -384,7 +391,7 @@ def create_image(character, parameters, draw_skeleton=False, print_dict=False, a
     return (im, labels) if as_image else (np.array(im).astype('uint8'), labels)
 
 
-def create_body_hierarchy(parameters, character, is_random=True):
+def create_body_hierarchy(parameters, character, is_random=True, mirrored=False):
     if parameters is not None:
         angles = parameters[0]
         for i in range(len(angles)):
@@ -442,18 +449,19 @@ def create_body_hierarchy(parameters, character, is_random=True):
             displacement = layer_info['displacement']
 
         path = layer_info['path']
-        if is_random and ('Left' in part or 'Right' in part):
-            flipped = np.random.randint(2)
-            # flipped = 0
-            if flipped == 1:
-                path_part = part.replace('Left', 'Right') if 'Left' in part else part.replace('Right', 'Left')
-                path = character.layers_info[path_part]['path']
-        else:
-            flipped = 0
+        # if ('Left' in part or 'Right' in part) and is_random:
+        #     flipped = np.random.randint(2)
+        #     # flipped = 0
+        #     if flipped == 1:
+        #         path_part = part.replace('Left', 'Right') if 'Left' in part else part.replace('Right', 'Left')
+        #         path = character.layers_info[path_part]['path']
+        # else:
+        #     flipped = 0
+        flipped = 0 #todo: this is only for debugging
         # if flipped == 1:
         #     displacement *= Vector2D(-1, 1)
-        images = images_front if character == char else images_side
-        parts_list.append(BodyPart(parent, name, path, displacement, parameters[i], images, flipped, is_random=is_random))
+        images = images_front if character == char else images_side if not character.mirrored else images_side_mirrored
+        parts_list.append(BodyPart(parent, name, path, displacement, parameters[i], images, flipped, is_random=is_random, mirrored=character.mirrored))
     return parts_list[0]
 
 
@@ -487,22 +495,22 @@ if __name__ == "__main__":
     #                                       "Right Arm",
     #                                       "Right Shoulder"])
 
-    char = Character(config['dirs']['source_dir'] + 'Character Layers\\Aang2\\Front\\Config.txt')
-    parameters = DataModule.generate_parameters(len(char.char_tree_array), 1, 50)
+    char = Character(config['dirs']['source_dir'] + 'Character Layers\\Goofy\\Side\\Config_mirrored.txt')
+    parameters = DataModule.generate_parameters(len(char.char_tree_array), 1,)
     im, mat = create_image(char, parameters[0], draw_skeleton=False, print_dict=False, as_image=False, random_order=False, random_generation=False)
     import matplotlib.pyplot as plt
     joints1 = np.array(mat['joints'])
     joints1 = np.transpose(joints1)
-    plt.scatter(joints1[0], joints1[1])
+    plt.scatter([joints1[0][2], joints1[0][6], joints1[0][10]], [joints1[1][2], joints1[1][6], joints1[1][10]], c='red')
     plt.imshow(im)
     plt.show()
 
-    with open(r"C:\School\Huji\Thesis\Pose_Estimation_in_2D_Characters\pose_estimation\output\aang\pose_resnet_16\128x128_d256x3_adam_lr1e-3\val\val_file\_iter_0_joints_pred.json") as f:
-        all_annotations = json.load(f)
-        x = 1.5
-        joints2 = np.array([joint for joint in all_annotations['0'].values()]) * x - (x - 1) * 64
-        joints2 = np.transpose(joints2)
-        plt.scatter(joints2[0] + 3, joints2[1] - 9)
-        plt.imshow(im)
-        plt.show()
+    # with open(r"C:\School\Huji\Thesis\Pose_Estimation_in_2D_Characters\pose_estimation\output\aang\pose_resnet_16\128x128_d256x3_adam_lr1e-3\val\val_file\_iter_0_joints_pred.json") as f:
+    #     all_annotations = json.load(f)
+    #     x = 1.5
+    #     joints2 = np.array([joint for joint in all_annotations['0'].values()]) * x - (x - 1) * 64
+    #     joints2 = np.transpose(joints2)
+    #     plt.scatter(joints2[0] + 3, joints2[1] - 9)
+    #     plt.imshow(im)
+    #     plt.show()
     # im.save(config['dirs']['source_dir'] + 'Test Inputs\\Images\\fabricated_post.png')

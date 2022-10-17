@@ -1,0 +1,232 @@
+{
+    "canonical_bias_dict": {
+"Root" : [0.9993908270190958, 0.03489949670250097, -2.6840770107347787, -0.03489949670250097, 0.9993908270190958, 9.099215933279364],
+"Head" : [0.984807753012208, 0.17364817766693033, 0.8658366496358432, -0.17364817766693033, 0.984807753012208, 22.186715099269367],
+"Left Shoulder" : [0.9876883405951378, -0.15643446504023087, 6.386243624712547, 0.15643446504023087, 0.9876883405951378, 17.21092363488428],
+"Right Shoulder" : [0.9998476951563913, -0.01745240643728351, -7.278172369091275, 0.01745240643728351, 0.9998476951563913, 15.875396277441276],
+"Left Upper Leg" : [0.9902680687415704, -0.13917310096006544, 5.631149486487066, 0.13917310096006544, 0.9902680687415704, -11.326524421058583],
+"Right Upper Leg" : [0.9975640502598242, 0.0697564737441253, -2.832205785449152, -0.0697564737441253, 0.9975640502598242, -11.831255655629638],
+"Left Arm" : [0.981627183447664, -0.1908089953765448, 8.342697834016127, 0.1908089953765448, 0.981627183447664, -16.715244325175227],
+"Right Arm" : [0.9993908270190958, -0.03489949670250097, -3.334472870728865, 0.03489949670250097, 0.9993908270190958, -19.12802370017282],
+"Left Lower Leg" : [0.984807753012208, -0.17364817766693033, 16.042330613142198, 0.17364817766693033, 0.984807753012208, -27.634102636030008],
+"Right Lower Leg" : [0.992546151641322, -0.12186934340514748, 1.4272493120614855, 0.12186934340514748, 0.992546151641322, -28.035030932767313],
+"Left Palm" : [0.9659258262890683, -0.25881904510252074, 3.5541162773142756, 0.25881904510252074, 0.9659258262890683, -9.400439217788161],
+"Right Palm" : [0.9986295347545738, -0.052335956242943835, 0.5756955186723822, 0.052335956242943835, 0.9986295347545738, -10.984924882300312],
+"Left Foot" : [0.9743700647852352, -0.224951054343865, 1.7250425873411448, 0.224951054343865, 0.9743700647852352, -11.917391831766688],
+"Right Foot" : [0.9961946980917455, -0.08715574274765817, 1.045868912971898, 0.08715574274765817, 0.9961946980917455, -11.954336377100947]
+	},
+    "char_tree": {
+        "Left Arm": [
+            "Left Palm"
+        ],
+        "Left Lower Leg": [
+            "Left Foot"
+        ],
+        "Left Shoulder": [
+            "Left Arm"
+        ],
+        "Left Upper Leg": [
+            "Left Lower Leg"
+        ],
+        "Right Arm": [
+            "Right Palm"
+        ],
+        "Right Lower Leg": [
+            "Right Foot"
+        ],
+        "Right Shoulder": [
+            "Right Arm"
+        ],
+        "Right Upper Leg": [
+            "Right Lower Leg"
+        ],
+        "Root": [
+            "Head",
+            "Left Shoulder",
+            "Right Shoulder",
+            "Left Upper Leg",
+            "Right Upper Leg"
+        ]
+    },
+    "char_tree_array": [
+        "Root",
+        "Head",
+        "Left Shoulder",
+        "Right Shoulder",
+        "Left Upper Leg",
+        "Right Upper Leg",
+        "Left Arm",
+        "Right Arm",
+        "Left Lower Leg",
+        "Right Lower Leg",
+        "Left Palm",
+        "Right Palm",
+        "Left Foot",
+        "Right Foot"
+    ],
+    "drawing_order": [
+        "Right Foot",
+        "Right Lower Leg",
+        "Right Upper Leg",
+        "Right Shoulder",
+        "Right Arm",
+        "Right Palm",
+        "Root",
+        "Left Shoulder",
+        "Left Arm",
+        "Left Palm",
+        "Left Foot",
+        "Left Lower Leg",
+        "Left Upper Leg",
+        "Head"
+    ],
+    "image_size": 256,
+    "layers_info": {
+        "Head": {
+            "displacement": [
+                -30,
+                25
+            ],
+            "name": "Head",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Goofy\\Side\\Head.png"
+        },
+        "Right Arm": {
+            "displacement": [
+                33,
+                33
+            ],
+            "name": "Right Arm",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Goofy\\Side\\Left Arm.png"
+        },
+        "Right Foot": {
+            "displacement": [
+                8,
+                18
+            ],
+            "name": "Right Foot",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Goofy\\Side\\Left Foot.png"
+        },
+        "Right Lower Leg": {
+            "displacement": [
+                55,
+                -18
+            ],
+            "name": "Right Lower Leg",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Goofy\\Side\\Left Lower Leg.png"
+        },
+        "Right Palm": {
+            "displacement": [
+                11,
+                8
+            ],
+            "name": "Right Palm",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Goofy\\Side\\Left Palm.png"
+        },
+        "Right Shoulder": {
+            "displacement": [
+                -15,
+                22
+            ],
+            "name": "Right Shoulder",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Goofy\\Side\\Left Shoulder.png"
+        },
+        "Right Upper Leg": {
+            "displacement": [
+                15,
+                8
+            ],
+            "name": "Right Upper Leg",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Goofy\\Side\\Left Upper Leg.png"
+        },
+        "Left Arm": {
+            "displacement": [
+                8,
+                -30
+            ],
+            "name": "Left Arm",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Goofy\\Side\\Right Arm.png"
+        },
+        "Left Foot": {
+            "displacement": [
+                -2,
+                -30
+            ],
+            "name": "Left Foot",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Goofy\\Side\\Right Foot.png"
+        },
+        "Left Lower Leg": {
+            "displacement": [
+                7,
+                -50
+            ],
+            "name": "Left Lower Leg",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Goofy\\Side\\Right Lower Leg.png"
+        },
+        "Left Palm": {
+            "displacement": [
+                9,
+                -13
+            ],
+            "name": "Left Palm",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Goofy\\Side\\Right Palm.png"
+        },
+        "Left Shoulder": {
+            "displacement": [
+                -25,
+                12
+            ],
+            "name": "Left Shoulder",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Goofy\\Side\\Right Shoulder.png"
+        },
+        "Left Upper Leg": {
+            "displacement": [
+                15,
+                -5
+            ],
+            "name": "Left Upper Leg",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Goofy\\Side\\Right Upper Leg.png"
+        },
+        "Root": {
+            "displacement": [
+                -3,
+                9
+            ],
+            "name": "Root",
+            "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Goofy\\Side\\Torso.png"
+        }
+    },
+    "mirrored": true,
+    "parents": [
+        null,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+    ],
+    "path": "C:\\School\\Huji\\Thesis\\Pose_Estimation_in_2D_Characters\\project_files\\Character Layers\\Goofy\\Side\\",
+    "sample_params": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    ]
+}

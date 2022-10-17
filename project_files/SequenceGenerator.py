@@ -78,23 +78,39 @@ def get_parameters_from_annotations(char, im_annotations):
 def GenerateSequence(filename, scale=1):
     char_front = project_files.ImageGenerator.char
     char_side = project_files.ImageGenerator.char_side
+    # char_side_mirrored = project_files.ImageGenerator.char_side_mirrored
     folder = '\\'.join(filename.split('\\')[:-1])
     name = filename.split('\\')[-1].split('.')[0]
-    test_inputs_folder = r"C:\School\Huji\Thesis\Pose_Estimation_in_2D_Characters\project_files\Test Inputs\Aang"
+    test_inputs_folder = r"C:\School\Huji\Thesis\Pose_Estimation_in_2D_Characters\project_files\Test Inputs\Goofy"
     im_file_names_annotated = []
     im_file_names = []
     with open(filename) as f:
         all_annotations = json.load(f)
         for i in range(len(all_annotations)):
-            im_annotations = np.array([joint for joint in all_annotations[str(i)].values()]) * scale - (scale - 1) * 64
+            im_annotations = np.array([joint for joint in all_annotations[str(i)].values()]) * scale - (scale - 1) * (char_front.image_size // 2)
             front_parameters = get_parameters_from_annotations(char_front, im_annotations)
             side_parameters = get_parameters_from_annotations(char_side, im_annotations)
+            # side_parameters_mirrored = get_parameters_from_annotations(char_side_mirrored, im_annotations)
+
             if np.linalg.norm(front_parameters) < np.linalg.norm(side_parameters):
                 char = char_front
                 parameters = front_parameters
+                # if (np.linalg.norm(front_parameters) < np.linalg.norm(side_parameters_mirrored)):
+                #     char = char_front
+                #     parameters = front_parameters
+                # else:
+                #     char = char_side_mirrored
+                #     parameters = side_parameters_mirrored
             else:
                 char = char_side
                 parameters = side_parameters
+                # if (np.linalg.norm(side_parameters) < np.linalg.norm(side_parameters_mirrored)):
+                #     char = char_side
+                #     parameters = side_parameters
+                # else:
+                #     char = char_side_mirrored
+                #     parameters = side_parameters_mirrored
+
             im, data = project_files.ImageGenerator.create_image(char, parameters, as_image=False, random_order=False, random_generation=False)
             joints = np.array(data['joints'])
             joints = np.transpose(joints)
@@ -113,7 +129,7 @@ def GenerateSequence(filename, scale=1):
 
             im_annotations = np.transpose(im_annotations)
             plt.scatter(im_annotations[0], im_annotations[1])
-            plt.scatter(im_annotations[0] + 128, im_annotations[1])
+            plt.scatter(im_annotations[0] + char_front.image_size, im_annotations[1])
 
             im_file_name_annotated = f"{folder}\\im{i}_annot.png"
             im_file_names_annotated.append(im_file_name_annotated)
@@ -138,4 +154,4 @@ def GenerateSequence(filename, scale=1):
 
 
 if __name__ == "__main__":
-    GenerateSequence(r"C:\School\Huji\Thesis\Pose_Estimation_in_2D_Characters\pose_estimation\output\aang\pose_resnet_16\128x128_d256x3_adam_lr1e-3\val\08-02-16 24-08-2022 (new dataset, 4 layers)\epoch_24_iter_0_joints_pred.json")
+    GenerateSequence(r"C:\School\Huji\Thesis\Pose_Estimation_in_2D_Characters\pose_estimation\output\Goofy\pose_resnet_16\256x256_d256x3_adam_lr1e-3\val\val_file\_iter_0_joints_pred.json")

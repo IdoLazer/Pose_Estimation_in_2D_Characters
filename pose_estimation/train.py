@@ -186,14 +186,14 @@ def main():
         perf_indicator = validate(config, valid_loader, valid_dataset, model,
                                   criterion, final_output_dir, tb_log_dir,
                                   writer_dict, val_file=session, prefix=f"epoch_{epoch}")
-
+        print(perf_indicator)
         #TODO: maybe check this later
-        # if perf_indicator > best_perf:
-        #     best_perf = perf_indicator
-        #     best_model = True
-        # else:
-        #     best_model = False
-        best_model = True
+        if perf_indicator > best_perf:
+            best_perf = perf_indicator
+            best_model = True
+        else:
+            best_model = False
+        # best_model = True
 
         logger.info('=> saving checkpoint to {}'.format(final_output_dir))
         save_checkpoint({

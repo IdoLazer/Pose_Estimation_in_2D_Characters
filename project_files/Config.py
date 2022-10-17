@@ -10,16 +10,16 @@ config = \
 
         'dataset':
             {
-                'character': 'Aang2',
+                'character': 'Goofy',
                 'name': 'Aang hands all poses',
                 'batch_size': 16,
                 'samples_num': 20000 * 0.8,
                 'test_samples_num': 1000 * 0.2,
-                'angle_range': 180,
+                'angle_range': 110,
                 'scaling_range': [0.75, 1/0.75],
                 'translation_range': [-2, 2],
                 'center_range': [-20, 20],
-                'max_layer_swaps': 2,
+                'max_layer_swaps': 4,
                 'limbs': [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [2, 6], [3, 7], [4, 8], [5, 9], [6, 10], [7, 11],
                           [8, 12], [9, 13]],
             },

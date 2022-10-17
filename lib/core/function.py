@@ -101,6 +101,16 @@ def train(config, train_loader, model, criterion, optimizer, epoch,
                               prefix)
 
 
+def calc_distance(original_preds, meta_joints, im_size):
+    original_preds_x = original_preds[:, :, 0]
+    original_preds_y = original_preds[:, :, 1]
+    gt_x = meta_joints[:, :, 0].numpy()
+    gt_y = meta_joints[:, :, 1].numpy()
+    d = np.sqrt((original_preds_x - gt_x) ** 2 + (original_preds_y - gt_y) ** 2) / im_size
+    avg_d = np.average(d)
+    return avg_d
+
+
 def validate(config, val_loader, val_dataset, model, criterion, output_dir,
              tb_log_dir, writer_dict=None, val_file='val_file', prefix=''):
     batch_time = AverageMeter()
@@ -174,6 +184,9 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
             preds, maxvals, original_preds = get_final_preds(
                 config, hm_output.clone().cpu().numpy(), paf_output.clone().cpu().numpy(), config.MODEL.LIMBS, c, s)
 
+            meta_joints = meta['joints']
+            perf_indicator = 1 - calc_distance(original_preds, meta_joints, 128)
+            # perf_indicator = criterion(preds, meta['joints'])
             # all_preds[idx:idx + num_images, :, 0:2] = preds[:, :, 0:2]
             # all_preds[idx:idx + num_images, :, 2:3] = maxvals
             # # double check this all_boxes parts
@@ -209,28 +222,28 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
                 save_debug_images(config, input, meta, hm_target, paf_target, preds, original_preds,
                                   hm_output, paf_output, prefix, vis_sequence=True)
 
-        name_values, perf_indicator = val_dataset.evaluate(
-            config, all_preds, output_dir, all_boxes, image_path,
-            filenames, imgnums)
-
-        _, full_arch_name = get_model_name(config)
-        if isinstance(name_values, list):
-            for name_value in name_values:
-                _print_name_value(name_value, full_arch_name)
-        else:
-            _print_name_value(name_values, full_arch_name)
-
-        if writer_dict:
-            writer = writer_dict['writer']
-            global_steps = writer_dict['valid_global_steps']
-            writer.add_scalar('valid_loss', losses.avg, global_steps)
-            writer.add_scalar('valid_acc', acc.avg, global_steps)
-            if isinstance(name_values, list):
-                for name_value in name_values:
-                    writer.add_scalars('valid', dict(name_value), global_steps)
-            else:
-                writer.add_scalars('valid', dict(name_values), global_steps)
-            writer_dict['valid_global_steps'] = global_steps + 1
+        # name_values, perf_indicator = val_dataset.evaluate(
+        #     config, all_preds, output_dir, all_boxes, image_path,
+        #     filenames, imgnums)
+        #
+        # _, full_arch_name = get_model_name(config)
+        # if isinstance(name_values, list):
+        #     for name_value in name_values:
+        #         _print_name_value(name_value, full_arch_name)
+        # else:
+        #     _print_name_value(name_values, full_arch_name)
+        #
+        # if writer_dict:
+        #     writer = writer_dict['writer']
+        #     global_steps = writer_dict['valid_global_steps']
+        #     writer.add_scalar('valid_loss', losses.avg, global_steps)
+        #     writer.add_scalar('valid_acc', acc.avg, global_steps)
+        #     if isinstance(name_values, list):
+        #         for name_value in name_values:
+        #             writer.add_scalars('valid', dict(name_value), global_steps)
+        #     else:
+        #         writer.add_scalars('valid', dict(name_values), global_steps)
+        #     writer_dict['valid_global_steps'] = global_steps + 1
 
     return perf_indicator
 

@@ -10,4 +10,5 @@ from __future__ import print_function
 
 from .mpii import MPIIDataset as mpii
 from .aang import AangDataset as aang
+from .goofy import GoofyDataset as goofy
 # from .coco import COCODataset as coco

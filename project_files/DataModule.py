@@ -96,7 +96,7 @@ def forge_new_dataset(samples=1000, num_samples_to_save=1000):
     angle_range = config['dataset']['angle_range']
     scaling_range = config['dataset']['scaling_range']
     translation_range = config['dataset']['translation_range']
-    data_path = f"{Path(__file__).resolve().parent.parent}\\data\\aang\\"
+    data_path = f"{Path(__file__).resolve().parent.parent}\\data\\{config['dataset']['character']}\\"
     output_path = f"{data_path}{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}\\"
     num_layers = len(ImageGenerator.char.char_tree_array)
 
@@ -160,5 +160,5 @@ def forge_new_dataset(samples=1000, num_samples_to_save=1000):
 
 
 if __name__ == "__main__":
-    forge_new_dataset(samples=100000, num_samples_to_save=1000)
+    forge_new_dataset(samples=1000, num_samples_to_save=100)
 
