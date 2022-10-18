@@ -162,8 +162,9 @@ def main():
     )
 
     # evaluate on validation set
-    validate(config, valid_loader, valid_dataset, model, criterion,
+    perf_indicator = validate(config, valid_loader, valid_dataset, model, criterion,
              final_output_dir, tb_log_dir)
+    logger.info(f"performance accuracy: {perf_indicator}")
 
 
 if __name__ == '__main__':

@@ -15,7 +15,7 @@ config = \
                 'batch_size': 16,
                 'samples_num': 20000 * 0.8,
                 'test_samples_num': 1000 * 0.2,
-                'angle_range': 110,
+                'angle_range': 80,
                 'scaling_range': [0.75, 1/0.75],
                 'translation_range': [-2, 2],
                 'center_range': [-20, 20],

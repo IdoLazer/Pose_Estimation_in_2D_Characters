@@ -160,5 +160,5 @@ def forge_new_dataset(samples=1000, num_samples_to_save=1000):
 
 
 if __name__ == "__main__":
-    forge_new_dataset(samples=1000, num_samples_to_save=100)
+    forge_new_dataset(samples=100000, num_samples_to_save=1000)
 
