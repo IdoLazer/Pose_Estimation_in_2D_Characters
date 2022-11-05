@@ -113,6 +113,7 @@ class Vector2D:
 
 images_front = dict()
 images_side = dict()
+images_back = dict()
 images_side_mirrored = dict()
 colored_images = dict()
 
@@ -194,11 +195,29 @@ class BodyPart:
         # else:
         #     self.mirror = 1
 
-        # Randomly replacing front and side versions of 'edge' limbs
+        # Randomly replacing front, side and back versions of 'edge' limbs
         if is_random and ('Foot' in name or 'Head' in name or 'Palm' in name):
-            images_idx = np.random.randint(2)
-            images = images_front if images_idx == 0 else images_side if not mirrored else images_side_mirrored
-            path = path.replace('Side', 'Front') if images_idx == 0 else path.replace('Front', 'Side')
+            images_idx = np.random.randint(3)
+            if images_idx == 0:
+                images = images_front
+                if 'Side' in path:
+                    path = path.replace('Side', 'Front')
+                if 'Back' in path:
+                    path = path.replace('Back', 'Front')
+            elif images_idx == 1:
+                images = images_side
+                if 'Front' in path:
+                    path = path.replace('Front', 'Side')
+                if 'Back' in path:
+                    path = path.replace('Back', 'Side')
+            else:
+                images = images_back
+                if 'Front' in path:
+                    path = path.replace('Front', 'Back')
+                if 'Side' in path:
+                    path = path.replace('Side', 'Back')
+            # images = images_front if images_idx == 0 else images_side if not mirrored else images_side_mirrored
+            # path = path.replace('Side', 'Front') if images_idx == 0 else path.replace('Front', 'Side')
 
         # Randomly mirroring limbs
         if name not in images and path is not None:
@@ -251,6 +270,8 @@ try:
                      '\\Front\\Config.txt')
     char_side = Character(config['dirs']['source_dir'] + 'Character Layers\\' + config['dataset']['character'] +
                      '\\Side\\Config.txt')
+    char_back = Character(config['dirs']['source_dir'] + 'Character Layers\\' + config['dataset']['character'] +
+                          '\\Back\\Config.txt')
     # char_side_mirrored = Character(config['dirs']['source_dir'] + 'Character Layers\\' + config['dataset']['character'] +
     #                       '\\Side\\Config_mirrored.txt')
 except OSError:
@@ -460,7 +481,14 @@ def create_body_hierarchy(parameters, character, is_random=True, mirrored=False)
         flipped = 0 #todo: this is only for debugging
         # if flipped == 1:
         #     displacement *= Vector2D(-1, 1)
-        images = images_front if character == char else images_side if not character.mirrored else images_side_mirrored
+        if character == char:
+            images = images_front
+        elif character == char_side:
+            images = images_side
+        elif character == char_back:
+            images = images_back
+        else:
+            images = images_front
         parts_list.append(BodyPart(parent, name, path, displacement, parameters[i], images, flipped, is_random=is_random, mirrored=character.mirrored))
     return parts_list[0]
 
@@ -495,13 +523,13 @@ if __name__ == "__main__":
     #                                       "Right Arm",
     #                                       "Right Shoulder"])
 
-    char = Character(config['dirs']['source_dir'] + 'Character Layers\\Goofy\\Side\\Config_mirrored.txt')
-    parameters = DataModule.generate_parameters(len(char.char_tree_array), 1,)
+    char = char_back
+    parameters = DataModule.generate_parameters(len(char.char_tree_array), 1, angle_range=80)
     im, mat = create_image(char, parameters[0], draw_skeleton=False, print_dict=False, as_image=False, random_order=False, random_generation=False)
     import matplotlib.pyplot as plt
     joints1 = np.array(mat['joints'])
     joints1 = np.transpose(joints1)
-    plt.scatter([joints1[0][2], joints1[0][6], joints1[0][10]], [joints1[1][2], joints1[1][6], joints1[1][10]], c='red')
+    # plt.scatter(joints1[0], joints1[1], c='red')
     plt.imshow(im)
     plt.show()
 

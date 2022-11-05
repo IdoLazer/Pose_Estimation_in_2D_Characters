@@ -10,7 +10,7 @@ config = \
 
         'dataset':
             {
-                'character': 'Goofy',
+                'character': 'Aang',
                 'name': 'Aang hands all poses',
                 'batch_size': 16,
                 'samples_num': 20000 * 0.8,
@@ -22,6 +22,8 @@ config = \
                 'max_layer_swaps': 4,
                 'limbs': [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [2, 6], [3, 7], [4, 8], [5, 9], [6, 10], [7, 11],
                           [8, 12], [9, 13]],
+                'augmentations': True,
+                'num_frames': 2,
             },
 
         'training':

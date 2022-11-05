@@ -42,12 +42,11 @@ def create_logger(cfg, cfg_name, phase='train'):
     final_log_file = final_output_dir / log_file
     head = '%(asctime)-15s %(message)s'
     logging.basicConfig(filename=str(final_log_file),
-                        format=head)
-    logger = logging.getLogger()
+                        format=head, force=True)
+    logger = logging.getLogger(cfg_name)
     logger.setLevel(logging.INFO)
     console = logging.StreamHandler()
-    logging.getLogger('').addHandler(console)
-
+    logging.getLogger(cfg_name).addHandler(console)
     tensorboard_log_dir = Path(cfg.LOG_DIR) / dataset / model / \
         (cfg_name + '_' + time_str)
     print('=> creating {}'.format(tensorboard_log_dir))

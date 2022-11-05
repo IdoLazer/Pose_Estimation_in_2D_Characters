@@ -17,17 +17,17 @@ import numpy as np
 import torch
 
 from core.config import get_model_name
-from core.evaluate import accuracy
-from core.inference import get_final_preds, get_max_preds_with_pafs
+from core.evaluate import accuracy, get_max_preds
+from core.inference import get_final_preds, get_final_preds_og, get_max_preds_with_pafs
 from utils.transforms import flip_back
-from utils.vis import save_debug_images
+from utils.vis import save_debug_images_og, save_debug_images
 
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 
 def train(config, train_loader, model, criterion, optimizer, epoch,
-          output_dir, tb_log_dir, writer_dict):
+          output_dir, tb_log_dir, writer_dict, logger):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -97,8 +97,9 @@ def train(config, train_loader, model, criterion, optimizer, epoch,
             writer_dict['train_global_steps'] = global_steps + 1
 
             prefix = '{}_{}'.format(os.path.join(output_dir, 'train'), i)
-            save_debug_images(config, input, meta, hm_target, paf_target, pred, pred, hm_output, paf_output,
-                              prefix)
+            ratio = config.MODEL.IMAGE_SIZE[0] / config.MODEL.EXTRA.HEATMAP_SIZE[0]
+            save_debug_images(config, input, meta, hm_target, paf_target, pred * ratio, pred * ratio, hm_output,
+                              paf_output, prefix)
 
 
 def calc_distance(original_preds, meta_joints, im_size):
@@ -107,12 +108,12 @@ def calc_distance(original_preds, meta_joints, im_size):
     gt_x = meta_joints[:, :, 0].numpy()
     gt_y = meta_joints[:, :, 1].numpy()
     d = np.sqrt((original_preds_x - gt_x) ** 2 + (original_preds_y - gt_y) ** 2) / im_size
-    avg_d = np.average(d)
+    avg_d = np.average(np.sum(d, axis=1))
     return avg_d
 
 
 def validate(config, val_loader, val_dataset, model, criterion, output_dir,
-             tb_log_dir, writer_dict=None, val_file='val_file', prefix=''):
+             tb_log_dir, logger, writer_dict=None, val_file='val_file', prefix='', og=False):
     batch_time = AverageMeter()
     losses = AverageMeter()
     acc = AverageMeter()
@@ -181,11 +182,14 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
             s = meta['scale'].numpy()
             score = meta['score'].numpy()
 
-            preds, maxvals, original_preds = get_final_preds(
-                config, hm_output.clone().cpu().numpy(), paf_output.clone().cpu().numpy(), config.MODEL.LIMBS, c, s)
-
+            if not og:
+                preds, maxvals, original_preds = get_final_preds(
+                    config, hm_output.clone().cpu().numpy(), paf_output.clone().cpu().numpy(), config.MODEL.LIMBS, c, s)
+            else:
+                preds, maxvals, original_preds = get_final_preds_og(config, hm_output.clone().cpu().numpy(), c, s)
             meta_joints = meta['joints']
-            perf_indicator = 1 - calc_distance(original_preds, meta_joints, 128)
+            ratio = config.MODEL.IMAGE_SIZE[0] / config.MODEL.EXTRA.HEATMAP_SIZE[0]
+            perf_indicator = calc_distance(original_preds * ratio, meta_joints, 128)
             # perf_indicator = criterion(preds, meta['joints'])
             # all_preds[idx:idx + num_images, :, 0:2] = preds[:, :, 0:2]
             # all_preds[idx:idx + num_images, :, 2:3] = maxvals
@@ -219,7 +223,7 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
                 #                                        paf_output.clone().cpu().numpy(),
                 #                                        3,
                 #                                        config.MODEL.LIMBS)
-                save_debug_images(config, input, meta, hm_target, paf_target, preds, original_preds,
+                save_debug_images(config, input, meta, hm_target, paf_target, preds, original_preds * ratio,
                                   hm_output, paf_output, prefix, vis_sequence=True)
 
         # name_values, perf_indicator = val_dataset.evaluate(
@@ -248,8 +252,126 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
     return perf_indicator
 
 
+def validate_og(config, val_loader, val_dataset, model, criterion, output_dir,
+             tb_log_dir, logger, writer_dict=None):
+    batch_time = AverageMeter()
+    losses = AverageMeter()
+    acc = AverageMeter()
+
+    # switch to evaluate mode
+    model.eval()
+
+    num_samples = len(val_dataset)
+    all_preds = np.zeros((num_samples, config.MODEL.NUM_JOINTS, 3),
+                         dtype=np.float32)
+    all_boxes = np.zeros((num_samples, 6))
+    image_path = []
+    filenames = []
+    imgnums = []
+    idx = 0
+    with torch.no_grad():
+        end = time.time()
+        for i, (input, target, target_weight, meta) in enumerate(val_loader):
+            # compute output
+            output = model(input)
+            if config.TEST.FLIP_TEST:
+                # this part is ugly, because pytorch has not supported negative index
+                # input_flipped = model(input[:, :, :, ::-1])
+                input_flipped = np.flip(input.cpu().numpy(), 3).copy()
+                input_flipped = torch.from_numpy(input_flipped).cuda()
+                output_flipped = model(input_flipped)
+                output_flipped = flip_back(output_flipped.cpu().numpy(),
+                                           val_dataset.flip_pairs)
+                output_flipped = torch.from_numpy(output_flipped.copy()).cuda()
+
+                # feature is not aligned, shift flipped heatmap for higher accuracy
+                if config.TEST.SHIFT_HEATMAP:
+                    output_flipped[:, :, :, 1:] = \
+                        output_flipped.clone()[:, :, :, 0:-1]
+                    # output_flipped[:, :, :, 0] = 0
+
+                output = (output + output_flipped) * 0.5
+
+            target = target.cuda(non_blocking=True)
+            target_weight = target_weight.cuda(non_blocking=True)
+
+            # loss = criterion(output, target, target_weight)
+
+            num_images = input.size(0)
+            # measure accuracy and record loss
+            # losses.update(loss.item(), num_images)
+            # _, avg_acc, cnt, pred = accuracy(output.cpu().numpy(),
+            #                                  target.cpu().numpy())
+            pred, _ = get_max_preds(output.cpu().numpy())
+
+            # acc.update(avg_acc, cnt)
+
+            # measure elapsed time
+            batch_time.update(time.time() - end)
+            end = time.time()
+
+            c = meta['center'].numpy()
+            s = meta['scale'].numpy()
+            score = meta['score'].numpy()
+
+            preds, maxvals = get_final_preds_og(
+                config, output.clone().cpu().numpy(), c, s)
+
+            all_preds[idx:idx + num_images, :, 0:2] = preds[:, :, 0:2]
+            all_preds[idx:idx + num_images, :, 2:3] = maxvals
+            # double check this all_boxes parts
+            all_boxes[idx:idx + num_images, 0:2] = c[:, 0:2]
+            all_boxes[idx:idx + num_images, 2:4] = s[:, 0:2]
+            all_boxes[idx:idx + num_images, 4] = np.prod(s*200, 1)
+            all_boxes[idx:idx + num_images, 5] = score
+            image_path.extend(meta['image'])
+            if config.DATASET.DATASET == 'posetrack':
+                filenames.extend(meta['filename'])
+                imgnums.extend(meta['imgnum'].numpy())
+
+            idx += num_images
+
+            if i % config.PRINT_FREQ == 0:
+                msg = 'Test: [{0}/{1}]\t' \
+                      'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t' \
+                      'Loss {loss.val:.4f} ({loss.avg:.4f})\t' \
+                      'Accuracy {acc.val:.3f} ({acc.avg:.3f})'.format(
+                          i, len(val_loader), batch_time=batch_time,
+                          loss=losses, acc=acc)
+                logger.info(msg)
+
+                prefix = '{}_{}'.format(os.path.join(output_dir, 'val'), i)
+                save_debug_images_og(config, input, meta, target, pred*4, output,
+                                  prefix)
+
+        name_values, perf_indicator = val_dataset.evaluate(
+            config, all_preds, output_dir, all_boxes, image_path,
+            filenames, imgnums)
+
+        _, full_arch_name = get_model_name(config)
+        if isinstance(name_values, list):
+            for name_value in name_values:
+                _print_name_value(name_value, full_arch_name, logger)
+        else:
+            _print_name_value(name_values, full_arch_name, logger)
+
+        if writer_dict:
+            writer = writer_dict['writer']
+            global_steps = writer_dict['valid_global_steps']
+            writer.add_scalar('valid_loss', losses.avg, global_steps)
+            writer.add_scalar('valid_acc', acc.avg, global_steps)
+            if isinstance(name_values, list):
+                for name_value in name_values:
+                    writer.add_scalars('valid', dict(name_value), global_steps)
+            else:
+                writer.add_scalars('valid', dict(name_values), global_steps)
+            writer_dict['valid_global_steps'] = global_steps + 1
+
+    return perf_indicator
+
+
 # markdown format output
-def _print_name_value(name_value, full_arch_name):
+def _print_name_value(name_value, full_arch_name, logger):
     names = name_value.keys()
     values = name_value.values()
     num_values = len(name_value)

@@ -1,6 +1,7 @@
 import json_tricks as json
 import project_files.ImageGenerator
 from project_files.ImageGenerator import Vector2D
+from project_files.Config import config
 import math
 import numpy as np
 import matplotlib.pyplot as plt
@@ -63,8 +64,16 @@ def get_parameters_from_annotations(char, im_annotations):
             # part_actual_rotations[i] = angle  # + part_actual_rotations[parent]
             part_translations[i] = [translation.x, translation.y]
 
+    part_actual_rotations[curr_parent] = np.average(parent_rotations)
     for i, parent in enumerate(char.parents):
-        part_rotations[i] = part_actual_rotations[i] if parent is None else part_actual_rotations[i] - part_rotations[parent]
+        rotation = part_actual_rotations[i]
+        # if i not in char.parents:
+        #     continue
+        while parent is not None:
+            rotation -= part_rotations[parent]
+            parent = char.parents[parent]
+        part_rotations[i] = rotation
+    # part_rotations = part_actual_rotations
     part_translations = np.array(part_translations)
     part_translations = np.transpose(part_translations)
     parameters = [part_rotations,
@@ -81,41 +90,44 @@ def GenerateSequence(filename, scale=1):
     # char_side_mirrored = project_files.ImageGenerator.char_side_mirrored
     folder = '\\'.join(filename.split('\\')[:-1])
     name = filename.split('\\')[-1].split('.')[0]
-    test_inputs_folder = r"C:\School\Huji\Thesis\Pose_Estimation_in_2D_Characters\project_files\Test Inputs\Goofy"
+    test_inputs_folder = f"C:/School/Huji/Thesis/Pose_Estimation_in_2D_Characters/project_files/Test Inputs/{config['dataset']['character']}"
     im_file_names_annotated = []
     im_file_names = []
     with open(filename) as f:
         all_annotations = json.load(f)
         for i in range(len(all_annotations)):
-            im_annotations = np.array([joint for joint in all_annotations[str(i)].values()]) * scale - (scale - 1) * (char_front.image_size // 2)
+            im_annotations = np.array([joint for joint in all_annotations[str(i)].values()]) * scale
+            # im_annotations -= (scale - 1) * (char_front.image_size // 2)
             front_parameters = get_parameters_from_annotations(char_front, im_annotations)
             side_parameters = get_parameters_from_annotations(char_side, im_annotations)
             # side_parameters_mirrored = get_parameters_from_annotations(char_side_mirrored, im_annotations)
-
+            # char = char_side_mirrored
+            # parameters = side_parameters_mirrored
             if np.linalg.norm(front_parameters) < np.linalg.norm(side_parameters):
                 char = char_front
                 parameters = front_parameters
-                # if (np.linalg.norm(front_parameters) < np.linalg.norm(side_parameters_mirrored)):
+                # if np.linalg.norm(front_parameters) < np.linalg.norm(side_parameters_mirrored):
                 #     char = char_front
                 #     parameters = front_parameters
                 # else:
-                #     char = char_side_mirrored
-                #     parameters = side_parameters_mirrored
+                    # char = char_side_mirrored
+                    # parameters = side_parameters_mirrored
             else:
                 char = char_side
                 parameters = side_parameters
-                # if (np.linalg.norm(side_parameters) < np.linalg.norm(side_parameters_mirrored)):
+                # if np.linalg.norm(side_parameters) < np.linalg.norm(side_parameters_mirrored):
                 #     char = char_side
                 #     parameters = side_parameters
                 # else:
-                #     char = char_side_mirrored
-                #     parameters = side_parameters_mirrored
+                    # char = char_side_mirrored
+                    # parameters = side_parameters_mirrored
 
             im, data = project_files.ImageGenerator.create_image(char, parameters, as_image=False, random_order=False, random_generation=False)
             joints = np.array(data['joints'])
             joints = np.transpose(joints)
 
             test_im = Image.open(f"{test_inputs_folder}\\test_Pose{i+1}.png")
+            test_im = test_im.resize((test_im.size[0] * scale, test_im.size[1] * scale))
             test_im = np.asarray(test_im)
 
             im = np.concatenate([test_im, im[:, :, :3]], axis=1)
@@ -154,4 +166,4 @@ def GenerateSequence(filename, scale=1):
 
 
 if __name__ == "__main__":
-    GenerateSequence(r"C:\School\Huji\Thesis\Pose_Estimation_in_2D_Characters\pose_estimation\output\Goofy\pose_resnet_16\256x256_d256x3_adam_lr1e-3\val\val_file\_iter_0_joints_pred.json")
+    GenerateSequence(r"C:\School\Huji\Thesis\Pose_Estimation_in_2D_Characters\pose_estimation\output\Goofy\pose_resnet_16\angle_range_80\val\val_file\_iter_0_joints_pred.json")

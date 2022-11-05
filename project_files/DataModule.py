@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import torch
 import shutil
+import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from torchvision.io import read_image, ImageReadMode
@@ -84,20 +85,20 @@ def generate_parameters(num_layers, samples_num, angle_range=None, scaling_range
     return parameters
 
 
-def save_image_batch(images, labels, start_idx, annotations, output_path):
+def save_image_batch(images, labels, start_idx, annotations, output_path, annotations_type):
     for idx, (image, label) in enumerate(zip(images, labels)):
-        name = f"pose{start_idx + idx}.png"
+        name = f"pose{start_idx + idx}_{annotations_type}.png"
         label["image"] = name
         annotations.append(label)
         image.save(f"{output_path}images\\{name}")
 
 
-def forge_new_dataset(samples=1000, num_samples_to_save=1000):
+def forge_new_dataset(samples=1000, num_samples_to_save=1000, name=None):
     angle_range = config['dataset']['angle_range']
     scaling_range = config['dataset']['scaling_range']
     translation_range = config['dataset']['translation_range']
     data_path = f"{Path(__file__).resolve().parent.parent}\\data\\{config['dataset']['character']}\\"
-    output_path = f"{data_path}{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}\\"
+    output_path = f"{data_path}{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{name}\\"
     num_layers = len(ImageGenerator.char.char_tree_array)
 
     try:
@@ -119,39 +120,11 @@ def forge_new_dataset(samples=1000, num_samples_to_save=1000):
     except OSError:
         print("Creation of config file failed")
 
-    train_annotations = []
-    test_annotations = []
     train_parameters = generate_parameters(num_layers, int(samples * 0.8), angle_range, scaling_range, translation_range)
     test_parameters = generate_parameters(num_layers, int(samples * 0.2), angle_range, scaling_range, translation_range)
-    forged_images = []
-    batch_annotations = []
-    for index in tqdm(range(len(train_parameters))):
-        im_parameters = train_parameters[index]
-        idx = np.random.randint(2)
-        char = ImageGenerator.char if idx == 0 else ImageGenerator.char_side
-        im, annotations = ImageGenerator.create_image(char, im_parameters, draw_skeleton=False,
-                                                      print_dict=False, as_image=True)
-        forged_images.append(im)
-        batch_annotations.append(annotations)
-        if index % num_samples_to_save == num_samples_to_save - 1:
-            save_image_batch(forged_images, batch_annotations, index - num_samples_to_save + 1, train_annotations,
-                             output_path)
-            forged_images = []
-            batch_annotations = []
-    json.dump(train_annotations, f"{output_path}annot\\train.json")
 
-    for index in tqdm(range(len(test_parameters))):
-        im_parameters = test_parameters[index]
-        im, annotations = ImageGenerator.create_image(ImageGenerator.char, im_parameters, draw_skeleton=False,
-                                                      print_dict=False, as_image=True)
-        forged_images.append(im)
-        batch_annotations.append(annotations)
-        if index % num_samples_to_save == num_samples_to_save - 1:
-            save_image_batch(forged_images, batch_annotations, index - num_samples_to_save + 1 + int(samples * 0.8),
-                             test_annotations, output_path)
-            forged_images = []
-            batch_annotations = []
-    json.dump(test_annotations, f"{output_path}annot\\valid.json")
+    generate_images_from_parameters(train_parameters, 'train', output_path, num_samples_to_save)
+    generate_images_from_parameters(test_parameters, 'valid', output_path, num_samples_to_save)
 
     for file in os.listdir(f"{data_path}test_images"):
         shutil.copy(f"{data_path}test_images\\{file}", f"{output_path}images")
@@ -159,6 +132,57 @@ def forge_new_dataset(samples=1000, num_samples_to_save=1000):
     shutil.copy(f"{data_path}test_annot\\test.json", f"{output_path}annot")
 
 
+def generate_images_from_parameters(parameters, annotations_type, output_path, num_samples_to_save):
+    annotations = []
+    forged_images = []
+    batch_annotations = []
+    for index in tqdm(range(len(parameters))):
+        im_parameters = parameters[index]
+        idx = np.random.randint(config['dataset']['num_frames'])
+        if idx == 0:
+            char = ImageGenerator.char
+        elif idx == 1:
+            char = ImageGenerator.char_side
+        else:
+            char = ImageGenerator.char_back
+        im, im_annotations = ImageGenerator.create_image(char, im_parameters, draw_skeleton=False,
+                                                      print_dict=False, as_image=True,
+                                                      random_order=config['dataset']['augmentations'],
+                                                      random_generation=config['dataset']['augmentations'])
+        forged_images.append(im)
+        batch_annotations.append(im_annotations)
+        if index % num_samples_to_save == num_samples_to_save - 1:
+            save_image_batch(forged_images, batch_annotations, index - num_samples_to_save + 1, annotations,
+                             output_path, annotations_type)
+            forged_images = []
+            batch_annotations = []
+    json.dump(annotations, f"{output_path}annot\\{annotations_type}.json")
+
+
 if __name__ == "__main__":
-    forge_new_dataset(samples=100000, num_samples_to_save=1000)
+
+    experiments = [
+        {'num_frames': 1, 'angle_range': 80, 'size': 50000, 'augmentations': False},
+        {'num_frames': 2, 'angle_range': 80, 'size': 50000, 'augmentations': False},
+        {'num_frames': 3, 'angle_range': 80, 'size': 50000, 'augmentations': False},
+        {'num_frames': 3, 'angle_range': 80, 'size': 50000, 'augmentations': True},
+        {'num_frames': 3, 'angle_range': 80, 'size': 10000, 'augmentations': True},
+        {'num_frames': 3, 'angle_range': 80, 'size': 100000, 'augmentations': True},
+        {'num_frames': 3, 'angle_range': 120, 'size': 50000, 'augmentations': True},
+        {'num_frames': 3, 'angle_range': 40, 'size': 50000, 'augmentations': True},
+        {'num_frames': 2, 'angle_range': 80, 'size': 50000, 'augmentations': True},
+        {'num_frames': 2, 'angle_range': 120, 'size': 50000, 'augmentations': False},
+        {'num_frames': 2, 'angle_range': 120, 'size': 50000, 'augmentations': True},
+        {'num_frames': 3, 'angle_range': 80, 'size': 100000, 'augmentations': False},
+    ]
+    for experiment in experiments:
+        num_frames = experiment['num_frames']
+        angle_range = experiment['angle_range']
+        augmentations = experiment['augmentations']
+        size = experiment['size']
+        config['dataset']['num_frames'] = num_frames
+        config['dataset']['angle_range'] = angle_range
+        config['dataset']['augmentations'] = augmentations
+        forge_new_dataset(samples=size, num_samples_to_save=10,
+                          name=f"{size=}-{angle_range=}-{augmentations=}-{num_frames=}")
 
