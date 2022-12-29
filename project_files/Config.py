@@ -10,7 +10,7 @@ config = \
 
         'dataset':
             {
-                'character': 'Aang',
+                'character': 'Goofy',
                 'name': 'Aang hands all poses',
                 'batch_size': 16,
                 'samples_num': 20000 * 0.8,

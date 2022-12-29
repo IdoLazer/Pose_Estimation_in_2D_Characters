@@ -12,10 +12,16 @@ def get_gt_joints(char):
     return [entry['joints'] for entry in gt]
 
 
-def get_our_joints(char):
-    with open(f"Results/{char}/Ours/_iter_0_joints_pred.json") as f:
-        ours = json.load(f)
-
+def get_our_joints(char, cfg=None, no_paf=False):
+    if cfg is None:
+        with open(f"Results/{char}/Ours/_iter_0_joints_pred(best).json") as f:
+            ours = json.load(f)
+    else:
+        path, layers = cfg
+        if no_paf:
+            path += "(no-paf)"
+        with open(f"../pose_estimation/output/{char}/pose_resnet_{layers}/{path}/val/val_file/_iter_0_joints_pred.json") as f:
+            ours = json.load(f)
     centers = []
     with open(f"Results/{char}/Baseline/test.json") as f:
         test_annot = json.load(f)
@@ -124,7 +130,7 @@ def calculate_performance(gt, pred, im_size):
     gt = np.array(gt)
     pred = np.array(pred)
     d = np.linalg.norm(gt - pred, axis=2)
-    return np.average(np.sum(d, axis=1) / im_size)
+    return np.average(d / im_size)
 
 
 def visualize_joints(char, im_size, joints, method_names):
@@ -150,24 +156,47 @@ def visualize_joints(char, im_size, joints, method_names):
 
 
 def main():
-    char = "Aang"
-    im_size = 128
-    gt = get_gt_joints(char)
-    ours = get_our_joints(char)
-    baseline_joints = get_baseline_joints(char)
-    efficient_pose_joints = get_efficient_post_joints(char, im_size)
-    openpose_joints = get_openpose_joints(char, im_size)
-    our_score = calculate_performance(gt, ours, im_size)
-    baseline_score = calculate_performance(gt, baseline_joints, im_size)
-    efficient_pose_score = calculate_performance(gt, efficient_pose_joints, im_size)
-    openpose_score = calculate_performance(gt, openpose_joints, im_size)
-    visualize_joints(char, 256, [gt, ours, baseline_joints, efficient_pose_joints, openpose_joints],
-                     ["Ground Truth", "Ours", "Baselines", "EfficientPose", "OpenPose"])
-    print(f"Scores:\n"
-          f"ours={our_score}\n"
-          f"baseline={baseline_score}\n"
-          f"efficient_pose={efficient_pose_score}\n"
-          f"openpose={openpose_score}")
+    chars = [("Aang", 128), ("Goofy", 256)]
+    cfgs = [
+            ('2022-10-29_15-04-05-size=50000-angle_range=80-augmentations=False-num_frames=1', 18),
+            ('2022-10-29_15-29-21-size=50000-angle_range=80-augmentations=False-num_frames=2', 18),
+            ('size=50000-angle_range=80-augmentations=False-num_frames=2-layers=10', 10),
+            ('2022-10-31_09-52-44-size=50000-angle_range=120-augmentations=False-num_frames=2', 18),
+            ('size=50000-angle_range=120-augmentations=False-num_frames=2-layers=10', 10),
+            ('2022-10-29_15-54-17-size=50000-angle_range=80-augmentations=False-num_frames=3', 18),
+            ('2022-10-31_10-43-41-size=100000-angle_range=80-augmentations=False-num_frames=3', 18),
+            ('size=100000-angle_range=80-augmentations=False-num_frames=3-layers=10', 10),
+            # '2022-10-29_16-19-16-size=50000-angle_range=80-augmentations=True-num_frames=3',
+            # '2022-10-29_16-44-49-size=10000-angle_range=80-augmentations=True-num_frames=3',
+            # '2022-10-29_16-49-58-size=100000-angle_range=80-augmentations=True-num_frames=3',
+            # '2022-10-29_17-41-50-size=50000-angle_range=120-augmentations=True-num_frames=3',
+            # '2022-10-29_18-07-24-size=50000-angle_range=40-augmentations=True-num_frames=3',
+            # '2022-10-31_09-27-06-size=50000-angle_range=80-augmentations=True-num_frames=2',
+            # '2022-10-31_09-52-44-size=50000-angle_range=120-augmentations=False-num_frames=2',
+            # '2022-10-31_10-18-13-size=50000-angle_range=120-augmentations=True-num_frames=2',
+            # 'size=50000-angle_range=120-augmentations=False-num_frames=2-layers=10-filters=64',
+            # 'size=100000-angle_range=80-augmentations=False-num_frames=3-layers=10-filters=64',
+            ]
+    for cfg in cfgs:
+        for character in chars:
+            char, im_size = character
+            gt = get_gt_joints(char)
+            ours = get_our_joints(char, cfg, no_paf=True)
+            # baseline_joints = get_baseline_joints(char)
+            # efficient_pose_joints = get_efficient_post_joints(char, im_size)
+            # openpose_joints = get_openpose_joints(char, im_size)
+            our_score = calculate_performance(gt, ours, im_size)
+            print(f"{cfg[0]}\n{char}\n{our_score}\n\n")
+            # baseline_score = calculate_performance(gt, baseline_joints, im_size)
+            # efficient_pose_score = calculate_performance(gt, efficient_pose_joints, im_size)
+            # openpose_score = calculate_performance(gt, openpose_joints, im_size)
+            # visualize_joints(char, 256, [gt, ours, baseline_joints, efficient_pose_joints, openpose_joints],
+            #                  ["Ground Truth", "Ours", "Baselines", "EfficientPose", "OpenPose"])
+            # print(f"Scores:\n"
+            #       f"ours={our_score}\n"
+            #       f"baseline={baseline_score}\n"
+            #       f"efficient_pose={efficient_pose_score}\n"
+            #       f"openpose={openpose_score}")
 
 
 if __name__ == "__main__":

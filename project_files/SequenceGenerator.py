@@ -31,6 +31,7 @@ def get_parameters_from_annotations(char, im_annotations):
                 curr_parent = parent
             if curr_parent != parent:
                 part_actual_rotations[curr_parent] = np.average(parent_rotations)
+                part_actual_rotations[i - 1] = np.average(parent_rotations)
                 parent_rotations = []
                 curr_parent = parent
 
@@ -65,6 +66,8 @@ def get_parameters_from_annotations(char, im_annotations):
             part_translations[i] = [translation.x, translation.y]
 
     part_actual_rotations[curr_parent] = np.average(parent_rotations)
+    part_actual_rotations[-1] = np.average(parent_rotations)
+
     for i, parent in enumerate(char.parents):
         rotation = part_actual_rotations[i]
         # if i not in char.parents:
@@ -84,25 +87,38 @@ def get_parameters_from_annotations(char, im_annotations):
     return np.array(parameters)
 
 
-def GenerateSequence(filename, scale=1):
+def flipped(joint, im_size):
+    return im_size-joint[0], joint[1]
+
+
+def GenerateSequence(filename, scale=1, input_char=None, remove_files=True):
     char_front = project_files.ImageGenerator.char
     char_side = project_files.ImageGenerator.char_side
+    flip_pairs = [[2, 3], [4, 5], [6, 7], [8, 9], [10, 11], [12, 13]]
     # char_side_mirrored = project_files.ImageGenerator.char_side_mirrored
     folder = '\\'.join(filename.split('\\')[:-1])
     name = filename.split('\\')[-1].split('.')[0]
-    test_inputs_folder = f"C:/School/Huji/Thesis/Pose_Estimation_in_2D_Characters/project_files/Test Inputs/{config['dataset']['character']}"
+    if input_char is None:
+        test_inputs_folder = f"C:/School/Huji/Thesis/Pose_Estimation_in_2D_Characters/project_files/Test Inputs/{config['dataset']['character']}"
+    else:
+        test_inputs_folder = f"C:/School/Huji/Thesis/Pose_Estimation_in_2D_Characters/project_files/Test Inputs/{input_char}"
     im_file_names_annotated = []
     im_file_names = []
     with open(filename) as f:
         all_annotations = json.load(f)
         for i in range(len(all_annotations)):
             im_annotations = np.array([joint for joint in all_annotations[str(i)].values()]) * scale
+            flipped_im_annotations = np.array([flipped(joint, char_front.image_size // scale) for joint in all_annotations[str(i)].values()]) * scale
+            for pair in flip_pairs:
+                tmp = tuple(flipped_im_annotations[pair[0]])
+                flipped_im_annotations[pair[0]] = flipped_im_annotations[pair[1]]
+                flipped_im_annotations[pair[1]] = np.array(tmp)
             # im_annotations -= (scale - 1) * (char_front.image_size // 2)
-            front_parameters = get_parameters_from_annotations(char_front, im_annotations)
-            side_parameters = get_parameters_from_annotations(char_side, im_annotations)
+            front_parameters = get_parameters_from_annotations(char_front, flipped_im_annotations)
+            side_parameters = get_parameters_from_annotations(char_side, flipped_im_annotations)
             # side_parameters_mirrored = get_parameters_from_annotations(char_side_mirrored, im_annotations)
-            # char = char_side_mirrored
-            # parameters = side_parameters_mirrored
+            # char = char_side
+            # parameters = side_parameters
             if np.linalg.norm(front_parameters) < np.linalg.norm(side_parameters):
                 char = char_front
                 parameters = front_parameters
@@ -110,8 +126,8 @@ def GenerateSequence(filename, scale=1):
                 #     char = char_front
                 #     parameters = front_parameters
                 # else:
-                    # char = char_side_mirrored
-                    # parameters = side_parameters_mirrored
+                #     char = char_side_mirrored
+                #     parameters = side_parameters_mirrored
             else:
                 char = char_side
                 parameters = side_parameters
@@ -119,8 +135,8 @@ def GenerateSequence(filename, scale=1):
                 #     char = char_side
                 #     parameters = side_parameters
                 # else:
-                    # char = char_side_mirrored
-                    # parameters = side_parameters_mirrored
+                #     char = char_side_mirrored
+                #     parameters = side_parameters_mirrored
 
             im, data = project_files.ImageGenerator.create_image(char, parameters, as_image=False, random_order=False, random_generation=False)
             joints = np.array(data['joints'])
@@ -140,8 +156,9 @@ def GenerateSequence(filename, scale=1):
             plt.savefig(im_file_name)
 
             im_annotations = np.transpose(im_annotations)
+            flipped_im_annotations = np.transpose(flipped_im_annotations)
             plt.scatter(im_annotations[0], im_annotations[1])
-            plt.scatter(im_annotations[0] + char_front.image_size, im_annotations[1])
+            plt.scatter(flipped_im_annotations[0] + char_front.image_size, flipped_im_annotations[1])
 
             im_file_name_annotated = f"{folder}\\im{i}_annot.png"
             im_file_names_annotated.append(im_file_name_annotated)
@@ -159,11 +176,12 @@ def GenerateSequence(filename, scale=1):
                 writer.append_data(image)
 
         # Remove files
-        for filename in set(im_file_names):
-            os.remove(filename)
-        for filename in set(im_file_names_annotated):
-            os.remove(filename)
+        if remove_files:
+            for filename in set(im_file_names):
+                os.remove(filename)
+            for filename in set(im_file_names_annotated):
+                os.remove(filename)
 
 
 if __name__ == "__main__":
-    GenerateSequence(r"C:\School\Huji\Thesis\Pose_Estimation_in_2D_Characters\pose_estimation\output\Goofy\pose_resnet_16\angle_range_80\val\val_file\_iter_0_joints_pred.json")
+    GenerateSequence(r"C:\School\Huji\Thesis\Pose_Estimation_in_2D_Characters\project_files\Sequences\Inputs\_iter_0_joints_pred.json", scale=2, input_char='Aang', remove_files=False)
